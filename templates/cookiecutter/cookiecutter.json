@@ -1,0 +1,9 @@
+{
+  "modelname": "DistilBERT",
+  "uppercase_modelname": "{{cookiecutter.modelname|upper}}",
+  "lowercase_modelname": "{{cookiecutter.modelname|lower}}",
+  "authors": "The HuggingFace Team",
+  "checkpoint_identifier": "distilbert-base-cased",
+  "encoder_decoder": ["encoder-decoder (NOT SUPPORTED)", "encoder"],
+  "template_nesting_level": "{{cookiecutter.template_nesting_level}}"
+}

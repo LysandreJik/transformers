@@ -11,8 +11,8 @@ quality:
 # Format source code automatically
 
 style:
-	black --line-length 119 --target-version py35 examples templates tests src utils
-	isort examples templates tests src utils
+	black --line-length 119 --target-version py35 examples tests src utils
+	isort examples tests src utils
 
 # Run tests for the library
 
