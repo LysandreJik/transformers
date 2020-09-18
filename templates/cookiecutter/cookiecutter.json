@@ -4,6 +4,6 @@
   "lowercase_modelname": "{{cookiecutter.modelname|lower}}",
   "authors": "The HuggingFace Team",
   "checkpoint_identifier": "distilbert-base-cased",
-  "encoder_decoder": ["encoder-decoder (NOT SUPPORTED)", "encoder"],
+  "encoder_decoder": ["encoder-decoder", "single-stack"],
   "template_nesting_level": "{{cookiecutter.template_nesting_level}}"
 }
