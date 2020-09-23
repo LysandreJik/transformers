@@ -15,14 +15,6 @@ from curses.textpad import Textbox, rectangle
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
 
-class Answer(str):
-    def __bool__(self):
-        if self.lower() == 'yes' or self.lower() == 'y':
-            return True
-
-        return super().__bool__()
-
-
 class ChecklistManager:
     class ChecklistLayer(OrderedDict):
 
@@ -182,9 +174,9 @@ class CursesCLI:
                 draw_choices()
                 key = self.stdscr.getkey()
 
+            curses.curs_set(True)
             return choices[selected_index]
         else:
-            curses.curs_set(True)
             editable_window = curses.newwin(1, 100, 6, 1)
             rectangle(self.stdscr, 5, 0, 1 + 5 + 1, 1 + 100 + 1)
             self.stdscr.refresh()
@@ -256,7 +248,6 @@ class CursesCLI:
         return architecture.get_layers()
 
 
-
 def add_new_model_command_factory(args):
     return AddNewModelCommand()
 
@@ -276,16 +267,14 @@ class AddNewModelCommand(BaseTransformersCLICommand):
         encoder_decoder = cli.get_message("Is your model seq2seq?", choices=["Encoder-decoder", "Single-stack"])
         checkpoint = cli.get_message("Do you have an checkpoint for your model (can be TF1, TF2 or PyTorch)?", choices=["Yes", "No"])
 
-        checkpoint = cli.get_message("Do you have an checkpoint for your model (can be TF1, TF2 or PyTorch)?", choices=["Yes", "No"])
-
-        if checkpoint:
+        if checkpoint == "Yes":
             checkpoint_path = cli.get_message(
                 f"Please enter the absolute path to your checkpoint.",
                 default=f"/Users/jik/Workspaces/python/transformers/albert/pytorch_model.bin"
             )
-
-        state_dict = torch.load(checkpoint_path)
-        architecture = cli.get_checkpoint_mapping(model_name, state_dict)
+            print(checkpoint)
+            state_dict = torch.load(checkpoint_path)
+            architecture = cli.get_checkpoint_mapping(model_name, state_dict)
 
         heads_checklist = ChecklistManager(
             'Model with Heads',
