@@ -54,6 +54,6 @@ _CONFIG_FOR_DOC = "DistilBertConfig"
 _TOKENIZER_FOR_DOC = "DistilBertTokenizer"
 
 DISTILBERT_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "('distilbert-base-uncased,distilbert-base-cased',)"
+    "('distilbert-base-uncased',)"
     # See all DistilBert models at https://huggingface.co/models?filter=distilbert
 ]

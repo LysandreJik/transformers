@@ -1,22 +1,22 @@
 @add_start_docstrings(
-    """{{cookiecutter.modelname}} Model with a multiple choice classification head on top (a linear layer on top of
+    """{{cookiecutter.model_name}} Model with a multiple choice classification head on top (a linear layer on top of
     the pooled output and a softmax) e.g. for RocStories/SWAG tasks. """,
-    {{cookiecutter.modelname}}_START_DOCSTRING,
+    {{cookiecutter.model_name}}_START_DOCSTRING,
 )
-class {{cookiecutter.modelname}}ForMultipleChoice({{cookiecutter.modelname}}PreTrainedModel):
+class {{cookiecutter.model_name}}ForMultipleChoice({{cookiecutter.model_name}}PreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
 
-        self.{{cookiecutter.lowercase_modelname}} = {{cookiecutter.modelname}}Model(config)
+        self.{{cookiecutter.lowercase_model_name}} = {{cookiecutter.model_name}}Model(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.classifier = nn.Linear(config.hidden_size, 1)
 
         self.init_weights()
 
-    @add_start_docstrings_to_callable({{cookiecutter.modelname}}_INPUTS_DOCSTRING.format("(batch_size, num_choices, sequence_length)"))
+    @add_start_docstrings_to_callable({{cookiecutter.model_name}}_INPUTS_DOCSTRING.format("(batch_size, num_choices, sequence_length)"))
     @add_code_sample_docstrings(
         tokenizer_class=_TOKENIZER_FOR_DOC,
-        checkpoint="{{cookiecutter.lowercase_modelname}}-base-uncased",
+        checkpoint="{{cookiecutter.lowercase_model_name}}-base-uncased",
         output_type=MultipleChoiceModelOutput,
         config_class=_CONFIG_FOR_DOC,
     )
@@ -52,7 +52,7 @@ class {{cookiecutter.modelname}}ForMultipleChoice({{cookiecutter.modelname}}PreT
             else None
         )
 
-        outputs = self.{{cookiecutter.lowercase_modelname}}(
+        outputs = self.{{cookiecutter.lowercase_model_name}}(
             input_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,

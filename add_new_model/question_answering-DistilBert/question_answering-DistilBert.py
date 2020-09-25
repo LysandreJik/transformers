@@ -1,22 +1,22 @@
 @add_start_docstrings(
-    """{{cookiecutter.modelname}} Model with a span classification head on top for extractive question-answering tasks like SQuAD (a linear
+    """DistilBert Model with a span classification head on top for extractive question-answering tasks like SQuAD (a linear
     layers on top of the hidden-states output to compute `span start logits` and `span end logits`). """,
-    {{cookiecutter.modelname}}_START_DOCSTRING,
+    DistilBert_START_DOCSTRING,
 )
-class {{cookiecutter.modelname}}ForQuestionAnswering({{cookiecutter.modelname}}PreTrainedModel):
+class DistilBertForQuestionAnswering(DistilBertPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.num_labels = config.num_labels
 
-        self.{{cookiecutter.lowercase_modelname}} = {{cookiecutter.modelname}}Model(config)
+        self.distilbert = DistilBertModel(config)
         self.qa_outputs = nn.Linear(config.hidden_size, config.num_labels)
 
         self.init_weights()
 
-    @add_start_docstrings_to_callable({{cookiecutter.modelname}}_INPUTS_DOCSTRING.format("(batch_size, sequence_length)"))
+    @add_start_docstrings_to_callable(DistilBert_INPUTS_DOCSTRING.format("(batch_size, sequence_length)"))
     @add_code_sample_docstrings(
         tokenizer_class=_TOKENIZER_FOR_DOC,
-        checkpoint="{{cookiecutter.lowercase_modelname}}-base-uncased",
+        checkpoint="distilbert-base-uncased",
         output_type=QuestionAnsweringModelOutput,
         config_class=_CONFIG_FOR_DOC,
     )
@@ -46,7 +46,7 @@ class {{cookiecutter.modelname}}ForQuestionAnswering({{cookiecutter.modelname}}P
         """
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-        outputs = self.{{cookiecutter.lowercase_modelname}}(
+        outputs = self.distilbert(
             input_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,

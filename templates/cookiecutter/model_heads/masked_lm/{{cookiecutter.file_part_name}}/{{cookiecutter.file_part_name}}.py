@@ -1,26 +1,26 @@
-@add_start_docstrings("""{{cookiecutter.modelname}} Model with a `language modeling` head on top. """, {{cookiecutter.modelname}}_START_DOCSTRING)
-class {{cookiecutter.modelname}}ForMaskedLM({{cookiecutter.modelname}}PreTrainedModel):
+@add_start_docstrings("""{{cookiecutter.model_name}} Model with a `language modeling` head on top. """, {{cookiecutter.model_name}}_START_DOCSTRING)
+class {{cookiecutter.model_name}}ForMaskedLM({{cookiecutter.model_name}}PreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
 
         if config.is_decoder:
             logger.warning(
-                "If you want to use `{{cookiecutter.modelname}}ForMaskedLM` make sure `config.is_decoder=False` for "
+                "If you want to use `{{cookiecutter.model_name}}ForMaskedLM` make sure `config.is_decoder=False` for "
                 "bi-directional self-attention."
             )
 
-        self.{{cookiecutter.lowercase_modelname}} = {{cookiecutter.modelname}}Model(config)
-        self.cls = {{cookiecutter.modelname}}OnlyMLMHead(config)
+        self.{{cookiecutter.lowercase_model_name}} = {{cookiecutter.model_name}}Model(config)
+        self.cls = {{cookiecutter.model_name}}OnlyMLMHead(config)
 
         self.init_weights()
 
     def get_output_embeddings(self):
         return self.cls.predictions.decoder
 
-    @add_start_docstrings_to_callable({{cookiecutter.modelname}}_INPUTS_DOCSTRING.format("(batch_size, sequence_length)"))
+    @add_start_docstrings_to_callable({{cookiecutter.model_name}}_INPUTS_DOCSTRING.format("(batch_size, sequence_length)"))
     @add_code_sample_docstrings(
         tokenizer_class=_TOKENIZER_FOR_DOC,
-        checkpoint="{{cookiecutter.lowercase_modelname}}-base-uncased",
+        checkpoint="{{cookiecutter.lowercase_model_name}}-base-uncased",
         output_type=MaskedLMOutput,
         config_class=_CONFIG_FOR_DOC,
     )
@@ -55,12 +55,12 @@ class {{cookiecutter.modelname}}ForMaskedLM({{cookiecutter.modelname}}PreTrained
                 FutureWarning,
             )
             labels = kwargs.pop("masked_lm_labels")
-        assert "lm_labels" not in kwargs, "Use `{{cookiecutter.modelname}}WithLMHead` for autoregressive language modeling task."
+        assert "lm_labels" not in kwargs, "Use `{{cookiecutter.model_name}}WithLMHead` for autoregressive language modeling task."
         assert kwargs == {}, f"Unexpected keyword arguments: {list(kwargs.keys())}."
 
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-        outputs = self.{{cookiecutter.lowercase_modelname}}(
+        outputs = self.{{cookiecutter.lowercase_model_name}}(
             input_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,

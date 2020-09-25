@@ -267,7 +267,7 @@ class AddNewModelCommand(BaseTransformersCLICommand):
 
         model_name = "DistilBert"
         authors = "Lysandre Debut"
-        checkpoint_identifier = "distilbert-base-uncased,distilbert-base-cased",
+        checkpoint_identifier = "distilbert-base-uncased",
 
         model_heads = ["Question Answering", "Token Classification"]
 
@@ -277,14 +277,16 @@ class AddNewModelCommand(BaseTransformersCLICommand):
         cookiecutter(str(path_to_cookiecutter), extra_context={
             "model_name": model_name,
             "checkpoint_identifier": checkpoint_identifier,
-            "model_outputs": model_outputs
+            "model_outputs": model_outputs,
+            "file_part_name": "header"
         }, no_input=True, directory="misc/header")
 
         # call to pretrained and base model
         cookiecutter(str(path_to_cookiecutter), extra_context={
             "model_name": model_name,
             "checkpoint_identifier": checkpoint_identifier,
-            "model_outputs": model_outputs
+            "model_outputs": model_outputs,
+            "file_part_name": "pretrained_and_base_model"
         }, no_input=True, directory="pretrained_and_base_model")
 
         # call to model heads
@@ -292,7 +294,8 @@ class AddNewModelCommand(BaseTransformersCLICommand):
             cookiecutter(str(path_to_cookiecutter), extra_context={
                 "model_name": model_name,
                 "checkpoint_identifier": checkpoint_identifier,
-                "model_outputs": model_outputs
+                "model_outputs": model_outputs,
+                "file_part_name": model_head
             }, no_input=True, directory=f"model_heads/{'_'.join(model_head.lower().split())}")
 
         import sys
