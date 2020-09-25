@@ -260,6 +260,50 @@ class AddNewModelCommand(BaseTransformersCLICommand):
 
     def run(self):
 
+        from cookiecutter.main import cookiecutter
+
+        path_to_transformer_root = Path(__file__).parent.parent.parent.parent
+        path_to_cookiecutter = path_to_transformer_root / "templates" / "cookiecutter"
+
+        model_name = "DistilBert"
+        authors = "Lysandre Debut"
+        checkpoint_identifier = "distilbert-base-uncased,distilbert-base-cased",
+
+        model_heads = ["Question Answering", "Token Classification"]
+
+        model_outputs = ',\n    '.join([''.join(model_head.split(" ")) + 'ModelOutput' for model_head in model_heads])
+
+        # call to header
+        cookiecutter(str(path_to_cookiecutter), extra_context={
+            "model_name": model_name,
+            "checkpoint_identifier": checkpoint_identifier,
+            "model_outputs": model_outputs
+        }, no_input=True, directory="misc/header")
+
+        # call to pretrained and base model
+        cookiecutter(str(path_to_cookiecutter), extra_context={
+            "model_name": model_name,
+            "checkpoint_identifier": checkpoint_identifier,
+            "model_outputs": model_outputs
+        }, no_input=True, directory="pretrained_and_base_model")
+
+        # call to model heads
+        for model_head in model_heads:
+            cookiecutter(str(path_to_cookiecutter), extra_context={
+                "model_name": model_name,
+                "checkpoint_identifier": checkpoint_identifier,
+                "model_outputs": model_outputs
+            }, no_input=True, directory=f"model_heads/{'_'.join(model_head.lower().split())}")
+
+        import sys
+        sys.exit()
+
+        cookiecutter(str(path_to_cookiecutter), extra_context={})
+
+        directory = [directory for directory in os.listdir() if "cookiecutter-template-" in directory[:22]][0]
+
+        cookiecutter()
+
         cli = CursesCLI()
 
         model_name = cli.get_message("What is your model name?", default="DistilBERT")
@@ -279,8 +323,8 @@ class AddNewModelCommand(BaseTransformersCLICommand):
         heads_checklist = ChecklistManager(
             'Model with Heads',
             [
-                'Masked Language Modeling',
-                'Causal Language Modeling',
+                'Masked LM',
+                'Causal LM',
                 'Question Answering',
                 'Token Classification',
                 'Sequence Classification',

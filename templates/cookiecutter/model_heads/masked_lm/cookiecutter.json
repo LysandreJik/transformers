@@ -1,0 +1,7 @@
+{
+  "model_name": "DistilBERT",
+  "uppercase_model_name": "{{cookiecutter.model_name|upper}}",
+  "lowercase_model_name": "{{cookiecutter.model_name|lower}}",
+  "checkpoint_identifier": "distilbert-base-cased",
+  "layers": ""
+}

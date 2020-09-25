@@ -1,11 +1,11 @@
-class {{cookiecutter.modelname}}PreTrainedModel(PreTrainedModel):
+class {{cookiecutter.model_name}}PreTrainedModel(PreTrainedModel):
     """An abstract class to handle weights initialization and
     a simple interface for downloading and loading pretrained models.
     """
 
-    config_class = {{cookiecutter.modelname}}Config
-    load_tf_weights = load_tf_weights_in_{{cookiecutter.lowercase_modelname}}
-    base_model_prefix = "{{cookiecutter.lowercase_modelname}}"
+    config_class = {{cookiecutter.model_name}}Config
+    load_tf_weights = load_tf_weights_in_{{cookiecutter.lowercase_model_name}}
+    base_model_prefix = "{{cookiecutter.lowercase_model_name}}"
     authorized_missing_keys = [r"position_ids"]
 
     def _init_weights(self, module):
@@ -14,37 +14,30 @@ class {{cookiecutter.modelname}}PreTrainedModel(PreTrainedModel):
             # Slightly different from the TF version which uses truncated_normal for initialization
             # cf https://github.com/pytorch/pytorch/pull/5617
             module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
-        elif isinstance(module, {{cookiecutter.modelname}}LayerNorm):
+        elif isinstance(module, {{cookiecutter.model_name}}LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
         if isinstance(module, nn.Linear) and module.bias is not None:
             module.bias.data.zero_()
 
 
-    loss: Optional[torch.FloatTensor] = None
-    prediction_logits: torch.FloatTensor = None
-    seq_relationship_logits: torch.FloatTensor = None
-    hidden_states: Optional[Tuple[torch.FloatTensor]] = None
-    attentions: Optional[Tuple[torch.FloatTensor]] = None
-
-
-{{cookiecutter.modelname}}_START_DOCSTRING = r"""
+{{cookiecutter.model_name}}_START_DOCSTRING = r"""
     This model is a PyTorch `torch.nn.Module <https://pytorch.org/docs/stable/nn.html#torch.nn.Module>`_ sub-class.
     Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general
     usage and behavior.
 
     Parameters:
-        config (:class:`~transformers.{{cookiecutter.modelname}}Config`): Model configuration class with all the parameters of the model.
+        config (:class:`~transformers.{{cookiecutter.model_name}}Config`): Model configuration class with all the parameters of the model.
             Initializing with a config file does not load the weights associated with the model, only the configuration.
             Check out the :meth:`~transformers.PreTrainedModel.from_pretrained` method to load the model weights.
 """
 
-{{cookiecutter.modelname}}_INPUTS_DOCSTRING = r"""
+{{cookiecutter.model_name}}_INPUTS_DOCSTRING = r"""
     Args:
         input_ids (:obj:`torch.LongTensor` of shape :obj:`{0}`):
             Indices of input sequence tokens in the vocabulary.
 
-            Indices can be obtained using :class:`transformers.{{cookiecutter.modelname}}Tokenizer`.
+            Indices can be obtained using :class:`transformers.{{cookiecutter.model_name}}Tokenizer`.
             See :func:`transformers.PreTrainedTokenizer.encode` and
             :func:`transformers.PreTrainedTokenizer.__call__` for details.
 
@@ -85,35 +78,17 @@ class {{cookiecutter.modelname}}PreTrainedModel(PreTrainedModel):
 
 
 @add_start_docstrings(
-    "The bare {{cookiecutter.modelname}} Model transformer outputting raw hidden-states without any specific head on top.",
-    {{cookiecutter.modelname}}_START_DOCSTRING,
+    "The bare {{cookiecutter.model_name}} Model transformer outputting raw hidden-states without any specific head on top.",
+    {{cookiecutter.model_name}}_START_DOCSTRING,
 )
-class {{cookiecutter.modelname}}Model({{cookiecutter.modelname}}PreTrainedModel):
-    """
-
-    The model can behave as an encoder (with only self-attention) as well
-    as a decoder, in which case a layer of cross-attention is added between
-    the self-attention layers, following the architecture described in `Attention is all you need`_ by Ashish Vaswani,
-    Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser and Illia Polosukhin.
-
-    To behave as an decoder the model needs to be initialized with the
-    :obj:`is_decoder` argument of the configuration set to :obj:`True`.
-    To be used in a Seq2Seq model, the model needs to initialized with both :obj:`is_decoder`
-    argument and :obj:`add_cross_attention` set to :obj:`True`; an
-    :obj:`encoder_hidden_states` is then expected as an input to the forward pass.
-
-    .. _`Attention is all you need`:
-        https://arxiv.org/abs/1706.03762
-
-    """
-
+class {{cookiecutter.model_name}}Model({{cookiecutter.model_name}}PreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.config = config
 
-        self.embeddings = {{cookiecutter.modelname}}Embeddings(config)
-        self.encoder = {{cookiecutter.modelname}}Encoder(config)
-        self.pooler = {{cookiecutter.modelname}}Pooler(config)
+        self.embeddings = {{cookiecutter.model_name}}Embeddings(config)
+        self.encoder = {{cookiecutter.model_name}}Encoder(config)
+        self.pooler = {{cookiecutter.model_name}}Pooler(config)
 
         self.init_weights()
 
@@ -131,10 +106,10 @@ class {{cookiecutter.modelname}}Model({{cookiecutter.modelname}}PreTrainedModel)
         for layer, heads in heads_to_prune.items():
             self.encoder.layer[layer].attention.prune_heads(heads)
 
-    @add_start_docstrings_to_callable({{cookiecutter.modelname}}_INPUTS_DOCSTRING.format("(batch_size, sequence_length)"))
+    @add_start_docstrings_to_callable({{cookiecutter.model_name}}_INPUTS_DOCSTRING.format("(batch_size, sequence_length)"))
     @add_code_sample_docstrings(
         tokenizer_class=_TOKENIZER_FOR_DOC,
-        checkpoint="{{cookiecutter.lowercase_modelname}}-base-uncased",
+        checkpoint="{{cookiecutter.lowercase_model_name}}-base-uncased",
         output_type=BaseModelOutputWithPooling,
         config_class=_CONFIG_FOR_DOC,
     )

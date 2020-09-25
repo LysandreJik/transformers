@@ -1,22 +1,21 @@
 @add_start_docstrings(
-    """{{cookiecutter.modelname}} Model with a `language modeling` head on top for CLM fine-tuning. """, {{cookiecutter.modelname}}_START_DOCSTRING
+    """{{cookiecutter.model_name}} Model with a `language modeling` head on top for CLM fine-tuning. """, {{cookiecutter.model_name}}_START_DOCSTRING
 )
-class {{cookiecutter.modelname}}ForCausalLM({{cookiecutter.modelname}}PreTrainedModel):
+class {{cookiecutter.model_name}}ForCausalLM({{cookiecutter.model_name}}PreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
 
         if not config.is_decoder:
-            logger.warning("If you want to use `{{cookiecutter.modelname}}LMHeadModel` as a standalone, add `is_decoder=True.`")
+            logger.warning("If you want to use `{{cookiecutter.model_name}}LMHeadModel` as a standalone, add `is_decoder=True.`")
 
-        self.{{cookiecutter.lowercase_modelname}} = {{cookiecutter.modelname}}Model(config)
-        self.cls = {{cookiecutter.modelname}}OnlyMLMHead(config)
+        {{cookiecutter.layers}}
 
         self.init_weights()
 
     def get_output_embeddings(self):
         return self.cls.predictions.decoder
 
-    @add_start_docstrings_to_callable({{cookiecutter.modelname}}_INPUTS_DOCSTRING.format("(batch_size, sequence_length)"))
+    @add_start_docstrings_to_callable({{cookiecutter.uppercase_model_name}}_INPUTS_DOCSTRING.format("(batch_size, sequence_length)"))
     @replace_return_docstrings(output_type=CausalLMOutput, config_class=_CONFIG_FOR_DOC)
     def forward(
             self,
@@ -52,13 +51,13 @@ class {{cookiecutter.modelname}}ForCausalLM({{cookiecutter.modelname}}PreTrained
 
         Example::
 
-            >>> from transformers import {{cookiecutter.modelname}}Tokenizer, {{cookiecutter.modelname}}LMHeadModel, {{cookiecutter.modelname}}Config
+            >>> from transformers import {{cookiecutter.model_name}}Tokenizer, {{cookiecutter.model_name}}LMHeadModel, {{cookiecutter.model_name}}Config
             >>> import torch
 
-            >>> tokenizer = {{cookiecutter.modelname}}Tokenizer.from_pretrained('{{cookiecutter.lowercase_modelname}}-base-cased')
-            >>> config = {{cookiecutter.modelname}}Config.from_pretrained("{{cookiecutter.lowercase_modelname}}-base-cased")
+            >>> tokenizer = {{cookiecutter.model_name}}Tokenizer.from_pretrained('{{cookiecutter.lowercase_model_name}}-base-cased')
+            >>> config = {{cookiecutter.model_name}}Config.from_pretrained("{{cookiecutter.lowercase_model_name}}-base-cased")
             >>> config.is_decoder = True
-            >>> model = {{cookiecutter.modelname}}LMHeadModel.from_pretrained('{{cookiecutter.lowercase_modelname}}-base-cased', config=config, return_dict=True)
+            >>> model = {{cookiecutter.model_name}}LMHeadModel.from_pretrained('{{cookiecutter.lowercase_model_name}}-base-cased', config=config, return_dict=True)
 
             >>> inputs = tokenizer("Hello, my dog is cute", return_tensors="pt")
             >>> outputs = model(**inputs)
@@ -67,7 +66,7 @@ class {{cookiecutter.modelname}}ForCausalLM({{cookiecutter.modelname}}PreTrained
         """
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-        outputs = self.{{cookiecutter.lowercase_modelname}}(
+        outputs = self.{{cookiecutter.lowercase_model_name}}(
             input_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
