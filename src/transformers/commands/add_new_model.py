@@ -1,4 +1,5 @@
 import os
+import shutil
 from argparse import ArgumentParser
 from collections import OrderedDict
 from pathlib import Path
@@ -277,6 +278,7 @@ class AddNewModelCommand(BaseTransformersCLICommand):
         cookiecutter(str(path_to_cookiecutter), extra_context={
             "model_name": model_name,
             "checkpoint_identifier": checkpoint_identifier,
+            "authors": authors,
             "model_outputs": model_outputs,
             "file_part_name": "header"
         }, no_input=True, directory="misc/header")
@@ -297,6 +299,15 @@ class AddNewModelCommand(BaseTransformersCLICommand):
                 "model_outputs": model_outputs,
                 "file_part_name": model_head
             }, no_input=True, directory=f"model_heads/{'_'.join(model_head.lower().split())}")
+
+        concat_order = [
+            "header", "pretrained_and_base_model", *model_heads
+        ]
+
+        with open(f'modeling_{model_name.lower()}.py', 'wb') as wfd:
+            for f in concat_order:
+                with open(f'{f}/{f}.py', 'rb') as fd:
+                    shutil.copyfileobj(fd, wfd)
 
         import sys
         sys.exit()
