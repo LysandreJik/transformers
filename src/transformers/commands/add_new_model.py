@@ -266,9 +266,9 @@ class AddNewModelCommand(BaseTransformersCLICommand):
         path_to_transformer_root = Path(__file__).parent.parent.parent.parent
         path_to_cookiecutter = path_to_transformer_root / "templates" / "cookiecutter"
 
-        model_name = "DistilBert"
+        model_name = "LysaBERT"
         authors = "Lysandre Debut"
-        checkpoint_identifier = "distilbert-base-uncased",
+        checkpoint_identifier = "lysandre-base-uncased",
 
         model_heads = ["Question Answering", "Token Classification"]
 
@@ -304,6 +304,39 @@ class AddNewModelCommand(BaseTransformersCLICommand):
             "header", "pretrained_and_base_model", *model_heads
         ]
 
+        architecture = {
+            'embeddings': {
+                'position_ids': {},
+                'word_embeddings': {},
+                'position_embeddings': {},
+                'token_type_embeddings': {},
+                'LayerNorm': {}
+            },
+            'encoder': {
+                'embedding_hidden_mapping_in': {},
+                'albert_layer_groups': {
+                    '0': {
+                        'albert_layers': {
+                            '0': {
+                                'full_layer_layer_norm': {},
+                                'attention': {
+                                    'query': {},
+                                    'key': {},
+                                    'value': {},
+                                    'dense': {},
+                                    'LayerNorm': {}
+                                },
+                                'ffn': {},
+                                'ffn_output': {}
+                            }
+                        }
+                    }
+                }
+            },
+            'pooler': {}
+        }
+
+
         with open(f'modeling_{model_name.lower()}.py', 'wb') as wfd:
             for f in concat_order:
                 with open(f'{f}/{f}.py', 'rb') as fd:
@@ -312,11 +345,14 @@ class AddNewModelCommand(BaseTransformersCLICommand):
         import sys
         sys.exit()
 
-        cookiecutter(str(path_to_cookiecutter), extra_context={})
+        path_to_transformer_root = Path(__file__).parent.parent.parent.parent
+        path_to_cookiecutter = path_to_transformer_root / "templates" / "cookiecutter" / "tmp"
 
-        directory = [directory for directory in os.listdir() if "cookiecutter-template-" in directory[:22]][0]
-
-        cookiecutter()
+        # cookiecutter(str(path_to_cookiecutter), extra_context={})
+        #
+        # directory = [directory for directory in os.listdir() if "cookiecutter-template-" in directory[:22]][0]
+        #
+        # cookiecutter()
 
         cli = CursesCLI()
 
@@ -328,11 +364,14 @@ class AddNewModelCommand(BaseTransformersCLICommand):
         if checkpoint == "Yes":
             checkpoint_path = cli.get_message(
                 f"Please enter the absolute path to your checkpoint.",
-                default=f"/Users/jik/Workspaces/python/transformers/albert/pytorch_model.bin"
+                default=f"/Users/jik/Workspaces/python/albert-model/pytorch_model.bin"
             )
             print(checkpoint)
             state_dict = torch.load(checkpoint_path)
             architecture = cli.get_checkpoint_mapping(model_name, state_dict)
+            print(architecture)
+            import sys
+            sys.exit(0)
 
         heads_checklist = ChecklistManager(
             'Model with Heads',
