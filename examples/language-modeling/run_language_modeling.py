@@ -41,10 +41,12 @@ from transformers import (
     Trainer,
     TrainingArguments,
     set_seed,
+    logging as hf_logging
 )
 
 
 logger = logging.getLogger(__name__)
+hf_logging.set_verbosity_info()
 
 
 MODEL_CONFIG_CLASSES = list(MODEL_WITH_LM_HEAD_MAPPING.keys())
