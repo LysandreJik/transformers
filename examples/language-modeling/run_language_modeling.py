@@ -267,6 +267,9 @@ def main():
         prediction_loss_only=True,
     )
 
+    from time import time
+    start = time()
+
     # Training
     if training_args.do_train:
         model_path = (
@@ -300,6 +303,10 @@ def main():
                     writer.write("%s = %s\n" % (key, str(result[key])))
 
         results.update(result)
+
+    end = time()
+
+    print("********", end - start, "********")
 
     return results
 
