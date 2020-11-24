@@ -18,7 +18,6 @@
 """
 
 import json
-import warnings
 import os
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -501,7 +500,7 @@ class PreTrainedTokenizerFast(PreTrainedTokenizerBase):
         self,
         save_directory: str,
         file_names: Tuple[str],
-        legacy_format: bool = None,
+        legacy_format: bool = True,
         filename_prefix: Optional[str] = None,
     ) -> Tuple[str]:
         """
@@ -513,27 +512,22 @@ class PreTrainedTokenizerFast(PreTrainedTokenizerBase):
         save_directory = str(save_directory)
 
         if legacy_format:
-            warnings.warn(
-                "The legacy_format argument is deprecated and will be removed in a future version. "
-                "Fast tokenizers always save to new and legacy format from version v4.0.0 onwards."
+            added_tokens_file = os.path.join(
+                save_directory, (filename_prefix + "-" if filename_prefix else "") + ADDED_TOKENS_FILE
             )
+            added_vocab = self.get_added_vocab()
+            if added_vocab:
+                with open(added_tokens_file, "w", encoding="utf-8") as f:
+                    out_str = json.dumps(added_vocab, ensure_ascii=False)
+                    f.write(out_str)
 
-        added_tokens_file = os.path.join(
-            save_directory, (filename_prefix + "-" if filename_prefix else "") + ADDED_TOKENS_FILE
-        )
-        added_vocab = self.get_added_vocab()
-        if added_vocab:
-            with open(added_tokens_file, "w", encoding="utf-8") as f:
-                out_str = json.dumps(added_vocab, ensure_ascii=False)
-                f.write(out_str)
-
-        vocab_files = self.save_vocabulary(save_directory, filename_prefix=filename_prefix)
-        file_names = file_names + vocab_files + (added_tokens_file,)
-
-        tokenizer_file = os.path.join(
-            save_directory, (filename_prefix + "-" if filename_prefix else "") + TOKENIZER_FILE
-        )
-        self.backend_tokenizer.save(tokenizer_file)
-        file_names = file_names + (tokenizer_file,)
+            vocab_files = self.save_vocabulary(save_directory, filename_prefix=filename_prefix)
+            file_names = file_names + vocab_files + (added_tokens_file,)
+        else:
+            tokenizer_file = os.path.join(
+                save_directory, (filename_prefix + "-" if filename_prefix else "") + TOKENIZER_FILE
+            )
+            self.backend_tokenizer.save(tokenizer_file)
+            file_names = file_names + (tokenizer_file,)
 
         return file_names

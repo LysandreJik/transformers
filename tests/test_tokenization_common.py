@@ -1382,6 +1382,7 @@ class TokenizerTesterMixin:
     def test_added_token_serializable(self):
         tokenizers = self.get_tokenizers(do_lower_case=False)
         for tokenizer in tokenizers:
+            print(tokenizer)
             with self.subTest(f"{tokenizer.__class__.__name__}"):
                 new_token = AddedToken("new_token", lstrip=True)
                 tokenizer.add_special_tokens({"additional_special_tokens": [new_token]})

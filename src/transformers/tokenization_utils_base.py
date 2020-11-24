@@ -1888,11 +1888,14 @@ class PreTrainedTokenizerBase(SpecialTokensMixin):
             added_tok_encoder_sorted = list(sorted(added_tok_encoder.items(), key=lambda x: x[1]))
 
             for token, index in added_tok_encoder_sorted:
-                assert index == len(tokenizer), (
-                    f"Non-consecutive added token '{token}' found. "
-                    f"Should have index {len(tokenizer)} but has index {index} in saved vocabulary."
-                )
-                tokenizer.add_tokens(token, special_tokens=bool(token in special_tokens))
+                # If a fast tokenizer was loaded with a tokenizer.json file but an added_tokens_file was also present
+                # in the directory, the added tokens may already be part of the base vocabulary.
+                if index < len(tokenizer) and tokenizer.convert_ids_to_tokens(index) == token:
+                    assert index == len(tokenizer), (
+                        f"Non-consecutive added token '{token}' found. "
+                        f"Should have index {len(tokenizer)} but has index {index} in saved vocabulary."
+                    )
+                    tokenizer.add_tokens(token, special_tokens=bool(token in special_tokens))
 
         # Check all our special tokens are registered as "no split" token (we don't cut them) and are in the vocab
         added_tokens = tokenizer.sanitize_special_tokens()
@@ -1904,7 +1907,7 @@ class PreTrainedTokenizerBase(SpecialTokensMixin):
         return tokenizer
 
     def save_pretrained(
-        self, save_directory: str, legacy_format: bool = True, filename_prefix: Optional[str] = None
+        self, save_directory: str, legacy_format: bool = None, filename_prefix: Optional[str] = None
     ) -> Tuple[str]:
         """
         Save the full tokenizer state.
@@ -1925,11 +1928,11 @@ class PreTrainedTokenizerBase(SpecialTokensMixin):
 
         Args:
             save_directory (:obj:`str`): The path to a directory where the tokenizer will be saved.
-            legacy_format (:obj:`bool`, `optional`, defaults to :obj:`True`):
-                Whether to save the tokenizer in legacy format (default), i.e. with tokenizer specific vocabulary and a
-                separate added_tokens files or in the unified JSON file format for the `tokenizers` library. It's only
-                possible to save a Fast tokenizer in the unified JSON format and this format is incompatible with
-                "slow" tokenizers (not powered by the `tokenizers` library).
+            legacy_format (:obj:`bool`, `optional`):
+                Deprecated argument to choose between the legacy format, with tokenizer specific vocabulary
+                on separate added_tokens files, or the newer format for the `tokenizers` library, which is a single
+                JSON file. From v4.0.0 onwards, slow tokenizers always save in the only format they can: legacy,
+                and fast tokenizers always save in both formats.
             filename_prefix: (:obj:`str`, `optional`):
                 A prefix to add to the names of the files saved by the tokenizer.
 
@@ -1990,7 +1993,7 @@ class PreTrainedTokenizerBase(SpecialTokensMixin):
         self,
         save_directory: str,
         file_names: Tuple[str],
-        legacy_format: bool = True,
+        legacy_format: bool = None,
         filename_prefix: Optional[str] = None,
     ) -> Tuple[str]:
         """
@@ -1999,7 +2002,7 @@ class PreTrainedTokenizerBase(SpecialTokensMixin):
         Fast tokenizers can also be saved in a unique JSON file containing {config + vocab + added-tokens} using the
         specific :meth:`~transformers.tokenization_utils_fast.PreTrainedTokenizerFast._save_pretrained`
         """
-        if not legacy_format:
+        if legacy_format is False:
             raise ValueError(
                 "Only fast tokenizers (instances of PretrainedTokenizerFast) can be saved in non legacy format."
             )
