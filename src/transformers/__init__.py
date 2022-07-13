@@ -479,6 +479,7 @@ else:
     _import_structure["models.m2m_100"].append("M2M100Tokenizer")
     _import_structure["models.marian"].append("MarianTokenizer")
     _import_structure["models.mbart"].append("MBartTokenizer")
+    _import_structure["models.nllb"].append("NllbTokenizer")
     _import_structure["models.mbart50"].append("MBart50Tokenizer")
     _import_structure["models.mluke"].append("MLukeTokenizer")
     _import_structure["models.mt5"].append("MT5Tokenizer")
@@ -538,6 +539,7 @@ else:
     _import_structure["models.longformer"].append("LongformerTokenizerFast")
     _import_structure["models.lxmert"].append("LxmertTokenizerFast")
     _import_structure["models.mbart"].append("MBartTokenizerFast")
+    _import_structure["models.nllb"].append("NllbTokenizerFast")
     _import_structure["models.mbart50"].append("MBart50TokenizerFast")
     _import_structure["models.mobilebert"].append("MobileBertTokenizerFast")
     _import_structure["models.mpnet"].append("MPNetTokenizerFast")
@@ -3176,6 +3178,7 @@ if TYPE_CHECKING:
         from .models.m2m_100 import M2M100Tokenizer
         from .models.marian import MarianTokenizer
         from .models.mbart import MBart50Tokenizer, MBartTokenizer
+        from .models.nllb import Nllb50Tokenizer, NllbTokenizer
         from .models.mluke import MLukeTokenizer
         from .models.mt5 import MT5Tokenizer
         from .models.pegasus import PegasusTokenizer
@@ -3227,6 +3230,7 @@ if TYPE_CHECKING:
         from .models.longformer import LongformerTokenizerFast
         from .models.lxmert import LxmertTokenizerFast
         from .models.mbart import MBartTokenizerFast
+        from .models.nllb import NllbTokenizerFast
         from .models.mbart50 import MBart50TokenizerFast
         from .models.mobilebert import MobileBertTokenizerFast
         from .models.mpnet import MPNetTokenizerFast
