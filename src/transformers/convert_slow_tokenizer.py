@@ -62,10 +62,10 @@ class SentencePieceExtractor:
         # Merges
         merges = []
         vocab_keys = list(vocab.keys())
-        num_processes = 11
+        num_processes = 15
         shard_length = len(vocab_keys) / num_processes
 
-        shards = [(vocab_keys[int(i * shard_length) : int((i) * shard_length + 10)], vocab) for i in range(num_processes)]
+        shards = [(vocab_keys[int(i * shard_length) : int((i + 1) * shard_length)], vocab) for i in range(num_processes)]
 
         import multiprocessing
 
