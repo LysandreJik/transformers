@@ -40,6 +40,7 @@ def process(arg):
             piece_id = v.get(merge, None)
             if piece_id:
                 merges += [(piece_l, piece_r, piece_id)]
+    return merges
 
 
 class SentencePieceExtractor:
@@ -64,7 +65,7 @@ class SentencePieceExtractor:
         num_processes = 11
         shard_length = len(vocab_keys) / num_processes
 
-        shards = [(vocab_keys[int(i * shard_length) : int((i) * shard_length + 10000)], vocab) for i in range(num_processes)]
+        shards = [(vocab_keys[int(i * shard_length) : int((i) * shard_length + 10)], vocab) for i in range(num_processes)]
 
         import multiprocessing
 
@@ -72,6 +73,9 @@ class SentencePieceExtractor:
 
         answer = pool_obj.map(process, shards)
         print(answer)
+
+        from itertools import chain
+        merges = list(chain.from_iterable(answer))
 
 
         merges = sorted(merges, key=lambda val: val[2])
