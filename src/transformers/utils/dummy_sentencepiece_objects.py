@@ -115,6 +115,20 @@ class MT5Tokenizer(metaclass=DummyObject):
         requires_backends(self, ["sentencepiece"])
 
 
+class Nllb50Tokenizer(metaclass=DummyObject):
+    _backends = ["sentencepiece"]
+
+    def __init__(self, *args, **kwargs):
+        requires_backends(self, ["sentencepiece"])
+
+
+class NllbTokenizer(metaclass=DummyObject):
+    _backends = ["sentencepiece"]
+
+    def __init__(self, *args, **kwargs):
+        requires_backends(self, ["sentencepiece"])
+
+
 class PegasusTokenizer(metaclass=DummyObject):
     _backends = ["sentencepiece"]
 

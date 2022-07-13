@@ -26,7 +26,7 @@ from ...utils import (
 )
 
 
-_import_structure = {"configuration_nllb": ["NLLB_PRETRAINED_CONFIG_ARCHIVE_MAP", "NllbConfig", "NllbOnnxConfig"]}
+_import_structure = {}
 
 try:
     if not is_sentencepiece_available():
@@ -44,25 +44,8 @@ except OptionalDependencyNotAvailable:
 else:
     _import_structure["tokenization_nllb_fast"] = ["NllbTokenizerFast"]
 
-try:
-    if not is_torch_available():
-        raise OptionalDependencyNotAvailable()
-except OptionalDependencyNotAvailable:
-    pass
-else:
-    _import_structure["modeling_nllb"] = [
-        "NLLB_PRETRAINED_MODEL_ARCHIVE_LIST",
-        "NllbForCausalLM",
-        "NllbForConditionalGeneration",
-        "NllbForQuestionAnswering",
-        "NllbForSequenceClassification",
-        "NllbModel",
-        "NllbPreTrainedModel",
-    ]
 
 if TYPE_CHECKING:
-    from .configuration_nllb import NLLB_PRETRAINED_CONFIG_ARCHIVE_MAP, NllbConfig, NllbOnnxConfig
-
     try:
         if not is_sentencepiece_available():
             raise OptionalDependencyNotAvailable()
@@ -78,22 +61,6 @@ if TYPE_CHECKING:
         pass
     else:
         from .tokenization_nllb_fast import NllbTokenizerFast
-
-    try:
-        if not is_torch_available():
-            raise OptionalDependencyNotAvailable()
-    except OptionalDependencyNotAvailable:
-        pass
-    else:
-        from .modeling_nllb import (
-            NLLB_PRETRAINED_MODEL_ARCHIVE_LIST,
-            NllbForCausalLM,
-            NllbForConditionalGeneration,
-            NllbForQuestionAnswering,
-            NllbForSequenceClassification,
-            NllbModel,
-            NllbPreTrainedModel,
-        )
 
 else:
     import sys

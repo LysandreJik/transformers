@@ -32,7 +32,7 @@ SAMPLE_VOCAB = get_tests_dir("fixtures/test_sentencepiece.model")
 
 
 if is_torch_available():
-    from transformers.models.nllb.modeling_nllb import shift_tokens_right
+    from transformers.models.m2m_100.modeling_m2m_100 import shift_tokens_right
 
 EN_CODE = 250004
 RO_CODE = 250020
@@ -45,6 +45,7 @@ class NllbTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
     rust_tokenizer_class = NllbTokenizerFast
     test_rust_tokenizer = True
     test_sentencepiece = True
+    from_pretrained_kwargs = {"use_auth_token": True}
 
     def setUp(self):
         super().setUp()
@@ -205,8 +206,8 @@ class NllbTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
 @require_torch
 @require_sentencepiece
 @require_tokenizers
-class NllbEnroIntegrationTest(unittest.TestCase):
-    checkpoint_name = "facebook/nllb-large-en-ro"
+class NllbDistilledIntegrationTest(unittest.TestCase):
+    checkpoint_name = "facebook/nllb-200-distilled-600M"
     src_text = [
         " UN Chief Says There Is No Military Solution in Syria",
         """ Secretary-General Ban Ki-moon says his response to Russia's stepped up military support for Syria is that "there is no military solution" to the nearly five-year conflict and more weapons will only worsen the violence and misery for millions of people.""",

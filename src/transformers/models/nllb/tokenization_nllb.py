@@ -32,14 +32,14 @@ VOCAB_FILES_NAMES = {"vocab_file": "sentencepiece.bpe.model"}
 
 PRETRAINED_VOCAB_FILES_MAP = {
     "vocab_file": {
-        "facebook/nllb-200-distilled-600m": (
+        "facebook/nllb-200-distilled-600M": (
             "https://huggingface.co/facebook/nllb-200-distilled-600M/blob/main/sentencepiece.bpe.model"
         ),
     }
 }
 
 PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
-    "facebook/nllb-200-distilled-600m": 1024,
+    "facebook/nllb-200-distilled-600M": 1024,
 }
 
 # fmt: off
@@ -62,12 +62,14 @@ class NllbTokenizer(PreTrainedTokenizer):
     ```python
     >>> from transformers import NllbTokenizer
 
-    >>> tokenizer = NllbTokenizer.from_pretrained("facebook/nllb-200-distilled-600m", src_lang="eng_Latn", tgt_lang="fra_Latn")
+    >>> tokenizer = NllbTokenizer.from_pretrained(
+    ...     "facebook/nllb-200-distilled-600M", src_lang="eng_Latn", tgt_lang="fra_Latn"
+    ... )
     >>> example_english_phrase = " UN Chief Says There Is No Military Solution in Syria"
-    >>> expected_translation_french = "Şeful ONU declară că nu există o soluţie militară în Siria"
+    >>> expected_translation_french = "Le chef de l'ONU affirme qu'il n'y a pas de solution militaire en Syrie."
     >>> inputs = tokenizer(example_english_phrase, return_tensors="pt")
     >>> with tokenizer.as_target_tokenizer():
-    ...     labels = tokenizer(expected_translation_romanian, return_tensors="pt")
+    ...     labels = tokenizer(expected_translation_french, return_tensors="pt")
     >>> inputs["labels"] = labels["input_ids"]
     ```"""
 
@@ -151,7 +153,7 @@ class NllbTokenizer(PreTrainedTokenizer):
                 [t for t in additional_special_tokens if t not in self._additional_special_tokens]
             )
 
-        self._src_lang = src_lang if src_lang is not None else "en_XX"
+        self._src_lang = src_lang if src_lang is not None else "eng_Latn"
         self.cur_lang_code_id = self.lang_code_to_id[self._src_lang]
         self.tgt_lang = tgt_lang
         self.set_src_lang_special_tokens(self._src_lang)
