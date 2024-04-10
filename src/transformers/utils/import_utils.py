@@ -781,6 +781,9 @@ def is_torchdistx_available():
 def is_faiss_available():
     return _faiss_available
 
+def is_faiss_available():
+    return _faiss_available
+
 
 def is_scipy_available():
     return _scipy_available

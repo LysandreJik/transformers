@@ -26,6 +26,7 @@ from packaging import version
 from tokenizers import AddedToken, Regex, Tokenizer, decoders, normalizers, pre_tokenizers, processors
 from tokenizers.models import BPE, Unigram, WordPiece
 
+from .modeling_gguf_pytorch_utils import load_gguf_checkpoint_in_pytorch_model
 from .utils import is_protobuf_available, requires_backends
 from .utils.import_utils import PROTOBUF_IMPORT_ERROR
 
@@ -1399,6 +1400,48 @@ class LlamaConverter(SpmConverter):
         return None
 
 
+class GGUFTokenizer:
+    def __init__(self, dict_):
+        for k, v in dict_.items():
+            setattr(self, k, v)
+
+
+class GGUFLlamaConverter(LlamaConverter):
+    def __init__(self, filename):
+        # requires_backends(self, "gguf")
+        # super().__init__()
+        self.proto = GGUFTokenizer(load_gguf_checkpoint_in_pytorch_model(filename)['tokenizer'])
+        self.original_tokenizer = self.proto
+
+    def vocab(self, proto):
+        return list(zip(proto.tokens, proto.scores))
+
+    def merges(self, proto):
+        return [tuple(merge.split(' ')) for merge in proto.merges]
+
+    def tokenizer(self, proto):
+        vocab_scores = self.vocab(self.proto)
+        merges = self.merges(self.proto)
+        bpe_vocab = {word: i for i, (word, _score) in enumerate(vocab_scores)}
+        tokenizer = Tokenizer(
+            BPE(
+                bpe_vocab,
+                merges,
+                unk_token=proto.tokens[proto.unk_token_id],
+                fuse_unk=True,
+                byte_fallback=True
+            )
+        )
+        tokenizer.add_special_tokens(
+            [
+                AddedToken("<unk>", normalized=False, special=True),
+                AddedToken("<s>", normalized=False, special=True),
+                AddedToken("</s>", normalized=False, special=True),
+            ]
+        )
+        return tokenizer
+
+
 class MarkupLMConverter(Converter):
     def converted(self) -> Tokenizer:
         ot = self.original_tokenizer
@@ -1435,6 +1478,10 @@ class MarkupLMConverter(Converter):
         )
 
         return tokenizer
+
+GGUF_TO_FAST_CONVERTERS = {
+    "llama": GGUFLlamaConverter,
+}
 
 
 SLOW_TO_FAST_CONVERTERS = {
@@ -1523,3 +1570,30 @@ def convert_slow_tokenizer(transformer_tokenizer) -> Tokenizer:
     converter_class = SLOW_TO_FAST_CONVERTERS[tokenizer_class_name]
 
     return converter_class(transformer_tokenizer).converted()
+
+def convert_gguf_tokenizer(gguf_file) -> Tokenizer:
+    """
+    Utilities to convert a slow tokenizer instance in a fast tokenizer instance.
+
+    Args:
+        transformer_tokenizer ([`~tokenization_utils_base.PreTrainedTokenizer`]):
+            Instance of a slow tokenizer to convert in the backend tokenizer for
+            [`~tokenization_utils_base.PreTrainedTokenizerFast`].
+
+    Return:
+        A instance of [`~tokenizers.Tokenizer`] to be used as the backend tokenizer of a
+        [`~tokenization_utils_base.PreTrainedTokenizerFast`]
+    """
+
+    tokenizer_class_name = 'llama'
+
+    # if tokenizer_class_name not in SLOW_TO_FAST_CONVERTERS:
+    #     raise ValueError(
+    #         f"An instance of tokenizer class {tokenizer_class_name} cannot be converted in a Fast tokenizer instance."
+    #         " No converter was found. Currently available slow->fast convertors:"
+    #         f" {list(SLOW_TO_FAST_CONVERTERS.keys())}"
+    #     )
+
+    converter_class = GGUF_TO_FAST_CONVERTERS[tokenizer_class_name]
+
+    return converter_class(gguf_file).converted()

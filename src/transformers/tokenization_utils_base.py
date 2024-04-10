@@ -1953,6 +1953,7 @@ class PreTrainedTokenizerBase(SpecialTokensMixin, PushToHubMixin):
         from_pipeline = kwargs.pop("_from_pipeline", None)
         from_auto_class = kwargs.pop("_from_auto", False)
         commit_hash = kwargs.pop("_commit_hash", None)
+        from_gguf = kwargs.get("from_gguf", False)
 
         if use_auth_token is not None:
             warnings.warn(
@@ -1980,7 +1981,7 @@ class PreTrainedTokenizerBase(SpecialTokensMixin, PushToHubMixin):
         is_local = os.path.isdir(pretrained_model_name_or_path)
         single_file_id = None
         if os.path.isfile(pretrained_model_name_or_path) or is_remote_url(pretrained_model_name_or_path):
-            if len(cls.vocab_files_names) > 1:
+            if len(cls.vocab_files_names) > 1 and not from_gguf:
                 raise ValueError(
                     f"Calling {cls.__name__}.from_pretrained() with the path to a single file or url is not "
                     "supported for this tokenizer. Use a model identifier or the path to a directory instead."
@@ -2118,8 +2119,9 @@ class PreTrainedTokenizerBase(SpecialTokensMixin, PushToHubMixin):
         # We instantiate fast tokenizers based on a slow tokenizer if we don't have access to the tokenizer.json
         # file or if `from_slow` is set to True.
         from_slow = kwargs.get("from_slow", False)
+        from_gguf = kwargs.get('from_gguf', False)
         has_tokenizer_file = resolved_vocab_files.get("tokenizer_file", None) is not None
-        if (from_slow or not has_tokenizer_file) and cls.slow_tokenizer_class is not None:
+        if (from_slow or not has_tokenizer_file) and cls.slow_tokenizer_class is not None and not from_gguf:
             slow_tokenizer = (cls.slow_tokenizer_class)._from_pretrained(
                 copy.deepcopy(resolved_vocab_files),
                 pretrained_model_name_or_path,
