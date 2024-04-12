@@ -9,6 +9,7 @@ import numpy as np
 
 GGML_TYPES = {
     "F32": 0,
+    "Q4_0": 2,
     "Q8_0": 8,
     "Q4_K": 12,
     "Q6_K": 14,
@@ -16,12 +17,14 @@ GGML_TYPES = {
 
 Q8_0_BLOCK_SIZE = 2 + 32
 Q4_K_BLOCK_SIZE = 144
+Q4_0_BLOCK_SIZE = 2 + 16
 Q6_K_BLOCK_SIZE = 210
 
 DATA_TYPES = {
     4: "uint32",
     5: "int32",
     6: "float32",
+    7: "bool",
     8: "string",
     9: "array",
     10: "uint64",
@@ -50,7 +53,10 @@ def read_value(f, data_type):
     elif data_type == DATA_TYPES["array"]:
         data_type, count = struct.unpack("<IQ", f.read(4+8))
         return [read_value(f, data_type) for _ in range(count)]
-
+    elif data_type == DATA_TYPES["bool"]:
+       # This should correspond to `GGUF_METADATA_VALUE_TYPE_BOOL`
+       # 1-byte value where 0 is false and 1 is true.
+       return struct.unpack("<b", f.read(1))[0]
     else:
         raise NotImplementedError(f"Data type {data_type} not implemented")
 
@@ -125,6 +131,26 @@ def dequantize_q4_k(data):
     # Dequantize final weights using scales and offsets
     return factors * qs2 - offsets
 
+def dequantize_q4_0(data):
+    # C implementation
+    # https://github.com/ggerganov/ggml/blob/fca1caafea7de9fbd7efc733b9818f9cf2da3050/src/ggml-quants.c#L1086
+    # C struct definition
+    # https://github.com/ggerganov/ggml/blob/fca1caafea7de9fbd7efc733b9818f9cf2da3050/src/ggml-quants.h#L11
+    num_blocks = len(data) // Q4_0_BLOCK_SIZE
+
+    data_f16 = np.frombuffer(data, dtype=np.float16).reshape(num_blocks, Q4_0_BLOCK_SIZE // 2)
+    data_u8 = np.frombuffer(data, dtype=np.uint8).reshape(num_blocks, Q4_0_BLOCK_SIZE)
+
+    # The scales are stored on the first 2 bytes and the rest corresponds to the quants
+    scales = data_f16[:, 0].reshape(num_blocks, 1).astype(np.float32)
+    scales = np.nan_to_num(scales)
+    # the rest of the bytes corresponds to the quants - we discard the first two bytes
+    quants = data_u8[:, 2:]
+
+    quants = np.stack([quants[:, :] & 0xf, quants[:, :] >> 4], axis=1).reshape(num_blocks, 32)
+
+    return scales * quants
+
 def dequantize_q6_k(data):
     # C implementation
     # https://github.com/ggerganov/ggml/blob/fca1caafea7de9fbd7efc733b9818f9cf2da3050/src/ggml-quants.c#L2275
@@ -137,6 +163,7 @@ def dequantize_q6_k(data):
     data_i8 = np.frombuffer(data, dtype=np.int8).reshape(num_blocks, Q6_K_BLOCK_SIZE)
 
     scales = data_f16[:, -1].reshape(num_blocks, 1).astype(np.float32)
+
     # TODO use uint8 and cast later?
     ql = data_u8[:, :128].astype(np.int16)
     qh = data_u8[:, 128:192].astype(np.int16)
@@ -190,6 +217,8 @@ def load_gguf_tensor(f, tensorinfo, name):
     num_elements = np.prod(shape)
     f.seek(offset)
 
+    print(ggml_type)
+
     if ggml_type == GGML_TYPES["F32"]:
         size = num_elements * 4
         values = np.frombuffer(f.read(size), dtype=np.float32)
@@ -199,6 +228,12 @@ def load_gguf_tensor(f, tensorinfo, name):
         data = f.read(size)
 
         values = dequantize_q8_0(data)
+
+    elif ggml_type == GGML_TYPES["Q4_0"]:
+        size = num_elements * Q4_0_BLOCK_SIZE // 32
+        data = f.read(size)
+
+        values = dequantize_q4_0(data)
 
     elif ggml_type == GGML_TYPES["Q4_K"]:
         size = num_elements * Q4_K_BLOCK_SIZE // 256
@@ -215,88 +250,7 @@ def load_gguf_tensor(f, tensorinfo, name):
     else:
         raise NotImplementedError(f"ggml_type {ggml_type} not implemented")
 
-    return values.reshape(shape[::-1])
-
-def translate_name(name):
-    if name == "output.weight":
-        return "lm_head.weight"
-
-    if name == "token_embd.weight":
-        return "model.embed_tokens.weight"
-
-    if name == "output_norm.weight":
-        return "model.norm.weight"
-
-    name = name.replace("blk.", "model.layers.")
-    name = name.replace(".attn_norm.weight", ".input_layernorm.weight")
-    name = name.replace(".ffn_down.weight", ".mlp.down_proj.weight")
-    name = name.replace(".ffn_gate.weight", ".mlp.gate_proj.weight")
-    name = name.replace(".ffn_up.weight", ".mlp.up_proj.weight")
-    name = name.replace(".ffn_norm.weight", ".post_attention_layernorm.weight")
-    name = name.replace(".attn_q.weight", ".self_attn.q_proj.weight")
-    name = name.replace(".attn_k.weight", ".self_attn.k_proj.weight")
-    name = name.replace(".attn_v.weight", ".self_attn.v_proj.weight")
-    name = name.replace(".attn_output.weight", ".self_attn.o_proj.weight")
-
-    return name
-
-def main():
-    import time
-    from safetensors.torch import load_file
-    state_dict = load_file("data/TinyLlama-1.1B-Chat-v1.0/model.safetensors")
-
-    print("safetensors data for comparison")
-    for key, value in state_dict.items():
-        print(f"{key:30} {value.shape}")
-    print()
-
-    for filename in [
-        "data/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
-        "data/tinyllama-1.1b-chat-v1.0.Q8_0.gguf",
-    ]:
-        with open(filename, "rb") as f:
-            info, tensorinfo = load_gguf(f)
-
-            print("gguf metadata")
-            for key, value in info.items():
-                print(f"{key:30} {repr(value)[:70]}")
-            print()
-            print("gguf tensors")
-            for key, value in tensorinfo.items():
-                print(f"{key:30} {str(value)[:70]}")
-            print()
-
-            for name in tensorinfo:
-                start_time = time.perf_counter()
-
-                weights = load_gguf_tensor(f, tensorinfo, name)
-
-                shape = tensorinfo[name]["shape"]
-
-                # For some reason, the key and query weights are transposed
-                # in this weird way in the GGUF file. Not sure why.
-                if ".attn_k." in name or ".attn_q." in name:
-                    num_heads = info["llama.attention.head_count"]
-                    tmp_shape = (shape[-1] // num_heads // 2, num_heads, 2, shape[0])
-                    weights = weights.reshape(tmp_shape)
-                    weights = weights.transpose(0, 2, 1, 3)
-                    weights = weights.reshape(shape[::-1])
-
-                ms = (time.perf_counter() - start_time) * 1000
-
-                other_name = translate_name(name)
-
-                expected = state_dict[other_name].float().numpy().astype(np.float32)
-
-                mse = np.mean(np.square(weights - expected))
-
-                ggml_type = tensorinfo[name]["ggml_type"]
-
-                print(f"MSE {mse:.10f} {name:30} ggml_type {ggml_type:2} {str(shape):13} {ms:7.3f} ms")
-
-                assert mse < 2e-5
-
-    print("Tests passed :)")
-
-if __name__ == "__main__":
-    main()
+    try:
+        return values.reshape(shape[::-1])
+    except:
+        import pdb; pdb.set_trace()
