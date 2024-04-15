@@ -2980,6 +2980,8 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
         adapter_kwargs = kwargs.pop("adapter_kwargs", {})
         adapter_name = kwargs.pop("adapter_name", "default")
         use_flash_attention_2 = kwargs.pop("use_flash_attention_2", False)
+        from_gguf = kwargs.pop("from_gguf", None)
+        gguf_kwargs = kwargs.pop("gguf_kwargs", {})
 
         if is_fsdp_enabled():
             low_cpu_mem_usage = True
@@ -3182,7 +3184,12 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
         keep_in_fp32_modules = None
         use_keep_in_fp32_modules = False
 
-        if pretrained_model_name_or_path is not None:
+        if from_gguf is not None and hf_quantizer is not None:
+            raise ValueError(
+                "You cannot combine Quantization and loading a model from a GGUF file, try again by making sure you did not passed a `quantization_config` or that you did not loaded a quantized model from the Hub."
+            )
+
+        if pretrained_model_name_or_path is not None and from_gguf is None:
             pretrained_model_name_or_path = str(pretrained_model_name_or_path)
             is_local = os.path.isdir(pretrained_model_name_or_path)
             if is_local:
@@ -3424,6 +3431,61 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
                 resolved_archive_file = archive_file
             else:
                 logger.info(f"loading weights file {filename} from cache at {resolved_archive_file}")
+        elif from_gguf is not None:
+            from .modeling_gguf_pytorch_utils import load_and_convert_gguf_file
+
+            # import pdb; pdb.set_trace()
+
+            # Case 1: the GGUF file is present locally
+            if os.path.isfile(from_gguf):
+                gguf_path = from_gguf
+            # Case 2: The GGUF path is a location on the Hub
+            # Load from URL or cache if already cached
+            else:
+                if len(from_gguf.split("/")) < 2:
+                    raise ValueError(
+                        "You passed an invalid location to a GGUF file on the Hub. Make sure to pass a valid full path, e.g. `TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/tinyllama-1.1b-chat-v1.0.Q4_0.gguf`"
+                    )
+
+                gguf_force_download = gguf_kwargs.pop("force_download", False)
+                gguf_resume_download = gguf_kwargs.pop("resume_download", False)
+                gguf_local_files_only = gguf_kwargs.pop("local_files_only", False)
+
+                gguf_subfolder = gguf_kwargs.pop("subfolder", None)
+                gguf_commit_hash = gguf_kwargs.pop("_commit_hash", None)
+
+                gguf_token = gguf_kwargs.get("token", None)
+                gguf_revision = gguf_kwargs.get("revision", None)
+
+                gguf_repo_name, gguf_file_name = "/".join(from_gguf.split("/")[:2]), "/".join(from_gguf.split("/")[2:])
+
+                cached_file_kwargs = {
+                    "cache_dir": cache_dir,
+                    "force_download": gguf_force_download,
+                    "resume_download": gguf_resume_download,
+                    "local_files_only": gguf_local_files_only,
+                    "token": gguf_token,
+                    "revision": gguf_revision,
+                    "subfolder": gguf_subfolder,
+                    "_raise_exceptions_for_gated_repo": False,
+                    "_raise_exceptions_for_missing_entries": False,
+                    "_commit_hash": gguf_commit_hash,
+                }
+
+                gguf_path = cached_file(gguf_repo_name, gguf_file_name, **cached_file_kwargs)
+
+                # Since we set _raise_exceptions_for_missing_entries=False, we don't get an exception but a None
+                # result when internet is up, the repo and revision exist, but the file does not.
+                if gguf_path is None:
+                    raise EnvironmentError(
+                        f"{gguf_repo_name} does not appear to have a file named"
+                        f" {gguf_file_name} and thus cannot be loaded with `from_pretrained`."
+                    )
+
+            state_dict = load_and_convert_gguf_file(gguf_path)
+
+            resolved_archive_file = None
+            is_sharded = False
         else:
             resolved_archive_file = None
 

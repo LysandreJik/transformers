@@ -1,5 +1,6 @@
 # coding=utf-8
-# Copyright 2024 The ggml.ai team and The HuggingFace Inc. team.
+# Copyright 2024 The ggml.ai team and The HuggingFace Inc. team. and pygguf author (github.com/99991)
+# https://github.com/99991/pygguf
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,22 +13,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" TODO intro """
-import torch
-import numpy as np
 from dataclasses import dataclass
-from enum import Enum
-from pprint import pprint
 from typing import Dict
 
-from gguf import GGUFValueType
+import numpy as np
+import torch
+from tqdm import tqdm
 
-from .utils.gguf_utils import load_gguf_tensor, load_gguf
-
+from .integrations import load_gguf, load_gguf_tensor
 from .utils.logging import get_logger
 
-logger = get_logger(__name__)
 
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -37,76 +34,71 @@ class GGUFSupportedArchitecture:
     key_mapping: Dict[str, str]
 
 
-llama_mapping = GGUFSupportedArchitecture('llama', 'llama', {
-
-})
+llama_mapping = GGUFSupportedArchitecture("llama", "llama", {})
 GGUF_SUPPORTED_ARCHITECTURES = {
-    'llama': llama_mapping,
-    'qwen2': llama_mapping,
-    'gemma': llama_mapping,
+    "llama": llama_mapping,
+    "qwen2": llama_mapping,
+    "gemma": llama_mapping,
 }
 
 renames = {
     "ignore": {
-        'GGUF': {
-            'version': 'version',
-            'tensor_count': 'tensor_count',
-            'kv_count': 'kv_count',
+        "GGUF": {
+            "version": "version",
+            "tensor_count": "tensor_count",
+            "kv_count": "kv_count",
         },
-        'general': {
-            'file_type': 'file_type',
-            'quantization_version': 'quantization_version'
-        }
+        "general": {"file_type": "file_type", "quantization_version": "quantization_version"},
     },
-    'config': {
-        'general': {
-            'architecture': 'model_type',
-            'name': '_model_name_or_path',
+    "config": {
+        "general": {
+            "architecture": "model_type",
+            "name": "_model_name_or_path",
         },
-        'llama': {
-            'context_length': 'max_position_embeddings',
-            'block_count': 'num_hidden_layers',
-            'feed_forward_length': 'intermediate_size',
-            'embedding_length': 'hidden_size',
-            'rope.dimension_count': None,
-            'rope.freq_base': 'rope_theta',
-            'attention.head_count': 'num_attention_heads',
-            'attention.head_count_kv': None,
-            'attention.layer_norm_rms_epsilon': 'rms_norm_eps',
-            'vocab_size': 'vocab_size'
+        "llama": {
+            "context_length": "max_position_embeddings",
+            "block_count": "num_hidden_layers",
+            "feed_forward_length": "intermediate_size",
+            "embedding_length": "hidden_size",
+            "rope.dimension_count": None,
+            "rope.freq_base": "rope_theta",
+            "attention.head_count": "num_attention_heads",
+            "attention.head_count_kv": None,
+            "attention.layer_norm_rms_epsilon": "rms_norm_eps",
+            "vocab_size": "vocab_size",
         },
-        'gemma': {
-            'context_length': 'max_position_embeddings',
-            'block_count': 'num_hidden_layers',
-            'feed_forward_length': 'intermediate_size',
-            'embedding_length': 'hidden_size',
-            'rope.dimension_count': None,
-            'rope.freq_base': 'rope_theta',
-            'attention.head_count': 'num_attention_heads',
-            'attention.head_count_kv': None,
-            'attention.layer_norm_rms_epsilon': 'rms_norm_eps',
+        "gemma": {
+            "context_length": "max_position_embeddings",
+            "block_count": "num_hidden_layers",
+            "feed_forward_length": "intermediate_size",
+            "embedding_length": "hidden_size",
+            "rope.dimension_count": None,
+            "rope.freq_base": "rope_theta",
+            "attention.head_count": "num_attention_heads",
+            "attention.head_count_kv": None,
+            "attention.layer_norm_rms_epsilon": "rms_norm_eps",
         },
-        'qwen2': {
-            'context_length': 'max_position_embeddings',
-            'block_count': 'num_hidden_layers',
-            'feed_forward_length': 'intermediate_size',
-            'embedding_length': 'hidden_size',
-            'rope.dimension_count': None,
-            'rope.freq_base': 'rope_theta',
-            'attention.head_count': 'num_attention_heads',
-            'attention.head_count_kv': None,
-            'attention.layer_norm_rms_epsilon': 'rms_norm_eps',
-            'use_parallel_residual': False
+        "qwen2": {
+            "context_length": "max_position_embeddings",
+            "block_count": "num_hidden_layers",
+            "feed_forward_length": "intermediate_size",
+            "embedding_length": "hidden_size",
+            "rope.dimension_count": None,
+            "rope.freq_base": "rope_theta",
+            "attention.head_count": "num_attention_heads",
+            "attention.head_count_kv": None,
+            "attention.layer_norm_rms_epsilon": "rms_norm_eps",
+            "use_parallel_residual": False,
         },
-        'tokenizer': {
-            'ggml.model': 'model_type',
-            'ggml.bos_token_id': 'bos_token_id',
-            'ggml.eos_token_id': 'eos_token_id',
-            'ggml.unknown_token_id': 'unk_token_id',
-            'ggml.padding_token_id': 'pad_token_id',
-        }
+        "tokenizer": {
+            "ggml.model": "model_type",
+            "ggml.bos_token_id": "bos_token_id",
+            "ggml.eos_token_id": "eos_token_id",
+            "ggml.unknown_token_id": "unk_token_id",
+            "ggml.padding_token_id": "pad_token_id",
+        },
     },
-    'tensors': {
+    "tensors": {
         "llama": {
             "token_embd": "model.embed_tokens",
             "blk": "model.layers",
@@ -151,32 +143,33 @@ renames = {
             "attn_output": "self_attn.o_proj",
             "output.weight": "lm_head.weight",
             "output_norm": "model.norm",
+        },
+    },
+    "tokenizer": {
+        "tokenizer": {
+            "ggml.model": "tokenizer_type",
+            "ggml.tokens": "tokens",
+            "ggml.scores": "scores",
+            "ggml.token_type": "token_type",
+            "ggml.merges": "merges",
+            "ggml.bos_token_id": "bos_token_id",
+            "ggml.eos_token_id": "eos_token_id",
+            "ggml.unknown_token_id": "unk_token_id",
+            "ggml.padding_token_id": "pad_token_id",
         }
     },
-    'tokenizer': {
-        'tokenizer': {
-            'ggml.model': 'tokenizer_type',
-            'ggml.tokens': 'tokens',
-            'ggml.scores': 'scores',
-            'ggml.token_type': 'token_type',
-            'ggml.merges': 'merges',
-            'ggml.bos_token_id': 'bos_token_id',
-            'ggml.eos_token_id': 'eos_token_id',
-            'ggml.unknown_token_id': 'unk_token_id',
-            'ggml.padding_token_id': 'pad_token_id',
-        }
-    },
-    'tokenizer_config': {
-        'tokenizer': {
-            'chat_template': 'chat_template',
-            'ggml.model': 'model_type',
-            'ggml.bos_token_id': 'bos_token_id',
-            'ggml.eos_token_id': 'eos_token_id',
-            'ggml.unknown_token_id': 'unk_token_id',
-            'ggml.padding_token_id': 'pad_token_id',
+    "tokenizer_config": {
+        "tokenizer": {
+            "chat_template": "chat_template",
+            "ggml.model": "model_type",
+            "ggml.bos_token_id": "bos_token_id",
+            "ggml.eos_token_id": "eos_token_id",
+            "ggml.unknown_token_id": "unk_token_id",
+            "ggml.padding_token_id": "pad_token_id",
         }
     },
 }
+
 
 def read_value(_value, data_type):
     if not isinstance(data_type, list):
@@ -188,7 +181,6 @@ def read_value(_value, data_type):
         assert data_type[0] == 9, "Received multiple types, but therefore expect the first type to indicate an array."
         data_type, array_data_type = data_type
 
-
     if data_type in [0, 1, 2, 3, 4, 5, 10, 11]:
         _value = int(_value[0])
     elif data_type in [6, 12]:
@@ -196,22 +188,20 @@ def read_value(_value, data_type):
     elif data_type in [7]:
         _value = bool(_value[0])
     elif data_type in [8]:
-        _value = ''.join([chr(a) for a in _value])
+        _value = "".join([chr(a) for a in _value])
     elif data_type in [9]:
         _value = read_value(_value, array_data_type)
 
     return _value
 
 
-def load_gguf_checkpoint_in_pytorch_model(
-    gguf_checkpoint_path, output_loading_info=False
-):
+def load_gguf_checkpoint_in_pytorch_model(gguf_checkpoint_path, output_loading_info=False):
     """
     TODO Docs
     """
     try:
-        from gguf import GGUFReader
         import torch  # noqa: F401
+        from gguf import GGUFReader
     except ImportError:
         logger.error(
             "Loading a GGUF checkpoint in PyTorch, requires both PyTorch and GGUF to be installed. Please see "
@@ -219,21 +209,18 @@ def load_gguf_checkpoint_in_pytorch_model(
         )
         raise
 
-
     reader = GGUFReader(gguf_checkpoint_path)
     fields = reader.fields
     reader_keys = list(fields.keys())
 
-
     parsed_parameters = {k: {} for k in renames}
 
     # List all key-value pairs in a columnized format
-    max_key_length = max(len(key) for key in reader.fields.keys())
     for key, field in reader.fields.items():
         gguf_key = key
-        split = gguf_key.split('.')
+        split = gguf_key.split(".")
         prefix = split[0]
-        config_key = '.'.join(split[1:])
+        config_key = ".".join(split[1:])
 
         value = [read_value(field.parts[_data_index], field.types) for _data_index in field.data]
         if len(value) == 1:
@@ -255,28 +242,34 @@ def load_gguf_checkpoint_in_pytorch_model(
         if gguf_key in reader_keys:
             print("Not added", gguf_key, value)
 
-    # List all tensors
-    tensor_info_format = "{:<30} | Shape: {:<15} | Size: {:<12} | Quantization: {}"
     for tensor in reader.tensors:
-        shape_str = "x".join(map(str, tensor.shape))
-        size_str = str(tensor.n_elements)
-        quantization_str = tensor.tensor_type.name
         renamed_tensor_name = tensor.name
 
         for tensor_name_mapping in renames["tensors"]:
             if tensor_name_mapping in renamed_tensor_name:
-                renamed_tensor_name = renamed_tensor_name.replace(tensor_name_mapping, renames["tensors"][tensor_name_mapping])
+                renamed_tensor_name = renamed_tensor_name.replace(
+                    tensor_name_mapping, renames["tensors"][tensor_name_mapping]
+                )
 
-        parsed_parameters['tensors'][tensor.name] = {'tensor_type': tensor.tensor_type, 'data': tensor.data, "transformers_key": renamed_tensor_name}
+        parsed_parameters["tensors"][tensor.name] = {
+            "tensor_type": tensor.tensor_type,
+            "data": tensor.data,
+            "transformers_key": renamed_tensor_name,
+        }
 
     print(f"Remaining keys: {reader_keys}")
     return parsed_parameters
 
+
 def load_and_convert_gguf_file(gguf_checkpoint_path):
     """
-    TODO Docs
-    """
+    Convert a GGUF file into a PyTorch compatible state dict. Dequantizes the checkpoint in case the GGUF contains quantized tensors.
+    Note that not all the quantization schemes are supported.
 
+    Args:
+        gguf_checkpoint_path (`str`):
+            Path to the GGUF
+    """
     converted_state_dict = {}
 
     with open(gguf_checkpoint_path, "rb") as f:
@@ -284,16 +277,12 @@ def load_and_convert_gguf_file(gguf_checkpoint_path):
         info, tensorinfo = load_gguf(f)
         architecture = info["general.architecture"]
 
-        # import pdb; pdb.set_trace()
-
         if architecture not in GGUF_SUPPORTED_ARCHITECTURES:
-            raise ValueError(
-                f"Architecture {architecture} not supported"
-            )
+            raise ValueError(f"Architecture {architecture} not supported")
 
         tensor_key_mapping = renames["tensors"][architecture]
 
-        for name in tensorinfo:
+        for name in tqdm(tensorinfo):
             weights = load_gguf_tensor(f, tensorinfo, name)
             shape = tensorinfo[name]["shape"]
 
@@ -308,6 +297,7 @@ def load_and_convert_gguf_file(gguf_checkpoint_path):
                 if tensor_name in name:
                     name = name.replace(tensor_name, tensor_key_mapping[tensor_name])
 
+            # Use copy to avoid errors with numpy and pytorch
             converted_state_dict[name] = torch.from_numpy(np.copy(weights))
-    
+
     return converted_state_dict

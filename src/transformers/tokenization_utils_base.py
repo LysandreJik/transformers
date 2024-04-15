@@ -2119,7 +2119,7 @@ class PreTrainedTokenizerBase(SpecialTokensMixin, PushToHubMixin):
         # We instantiate fast tokenizers based on a slow tokenizer if we don't have access to the tokenizer.json
         # file or if `from_slow` is set to True.
         from_slow = kwargs.get("from_slow", False)
-        from_gguf = kwargs.get('from_gguf', False)
+        from_gguf = kwargs.get("from_gguf", False)
         has_tokenizer_file = resolved_vocab_files.get("tokenizer_file", None) is not None
         if (from_slow or not has_tokenizer_file) and cls.slow_tokenizer_class is not None and not from_gguf:
             slow_tokenizer = (cls.slow_tokenizer_class)._from_pretrained(

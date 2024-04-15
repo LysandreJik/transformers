@@ -1410,27 +1410,21 @@ class GGUFLlamaConverter(LlamaConverter):
     def __init__(self, filename):
         # requires_backends(self, "gguf")
         # super().__init__()
-        self.proto = GGUFTokenizer(load_gguf_checkpoint_in_pytorch_model(filename)['tokenizer'])
+        self.proto = GGUFTokenizer(load_gguf_checkpoint_in_pytorch_model(filename)["tokenizer"])
         self.original_tokenizer = self.proto
 
     def vocab(self, proto):
         return list(zip(proto.tokens, proto.scores))
 
     def merges(self, proto):
-        return [tuple(merge.split(' ')) for merge in proto.merges]
+        return [tuple(merge.split(" ")) for merge in proto.merges]
 
     def tokenizer(self, proto):
         vocab_scores = self.vocab(self.proto)
         merges = self.merges(self.proto)
         bpe_vocab = {word: i for i, (word, _score) in enumerate(vocab_scores)}
         tokenizer = Tokenizer(
-            BPE(
-                bpe_vocab,
-                merges,
-                unk_token=proto.tokens[proto.unk_token_id],
-                fuse_unk=True,
-                byte_fallback=True
-            )
+            BPE(bpe_vocab, merges, unk_token=proto.tokens[proto.unk_token_id], fuse_unk=True, byte_fallback=True)
         )
         tokenizer.add_special_tokens(
             [
@@ -1478,6 +1472,7 @@ class MarkupLMConverter(Converter):
         )
 
         return tokenizer
+
 
 GGUF_TO_FAST_CONVERTERS = {
     "llama": GGUFLlamaConverter,
@@ -1571,6 +1566,7 @@ def convert_slow_tokenizer(transformer_tokenizer) -> Tokenizer:
 
     return converter_class(transformer_tokenizer).converted()
 
+
 def convert_gguf_tokenizer(gguf_file) -> Tokenizer:
     """
     Utilities to convert a slow tokenizer instance in a fast tokenizer instance.
@@ -1585,7 +1581,7 @@ def convert_gguf_tokenizer(gguf_file) -> Tokenizer:
         [`~tokenization_utils_base.PreTrainedTokenizerFast`]
     """
 
-    tokenizer_class_name = 'llama'
+    tokenizer_class_name = "llama"
 
     # if tokenizer_class_name not in SLOW_TO_FAST_CONVERTERS:
     #     raise ValueError(

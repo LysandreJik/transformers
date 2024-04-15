@@ -42,6 +42,7 @@ _import_structure = {
         "set_hf_deepspeed_config",
         "unset_hf_deepspeed_config",
     ],
+    "ggml": ["load_gguf", "load_gguf_tensor"],
     "integration_utils": [
         "INTEGRATION_TO_CALLBACK",
         "AzureMLCallback",
@@ -111,6 +112,7 @@ if TYPE_CHECKING:
         set_hf_deepspeed_config,
         unset_hf_deepspeed_config,
     )
+    from .ggml import load_gguf, load_gguf_tensor
     from .integration_utils import (
         INTEGRATION_TO_CALLBACK,
         AzureMLCallback,
