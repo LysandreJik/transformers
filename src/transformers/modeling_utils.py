@@ -80,6 +80,7 @@ from .utils import (
     is_accelerate_available,
     is_bitsandbytes_available,
     is_flash_attn_2_available,
+    is_gguf_available,
     is_offline_mode,
     is_optimum_available,
     is_peft_available,
@@ -3432,9 +3433,12 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
             else:
                 logger.info(f"loading weights file {filename} from cache at {resolved_archive_file}")
         elif from_gguf is not None:
-            from .modeling_gguf_pytorch_utils import load_and_convert_gguf_file
+            if not is_gguf_available():
+                raise ValueError(
+                    "You need to have `gguf` installed in order to convert GGUF weights. `pip install gguf`"
+                )
 
-            # import pdb; pdb.set_trace()
+            from .modeling_gguf_pytorch_utils import load_and_convert_gguf_file
 
             # Case 1: the GGUF file is present locally
             if os.path.isfile(from_gguf):

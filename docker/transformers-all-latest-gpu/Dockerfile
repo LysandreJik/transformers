@@ -45,6 +45,10 @@ RUN python3 -m pip install --no-cache-dir git+https://github.com/huggingface/opt
 # For video model testing
 RUN python3 -m pip install --no-cache-dir decord av==9.2.0
 
+# For GGUF tests
+RUN python3 -m pip install --no-cache-dir gguf
+
+
 # For `dinat` model
 RUN python3 -m pip install --no-cache-dir 'natten<0.15.0' -f https://shi-labs.com/natten/wheels/$CUDA/
 
