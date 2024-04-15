@@ -22,6 +22,7 @@ from collections import OrderedDict
 
 from ...configuration_utils import PretrainedConfig
 from ...dynamic_module_utils import get_class_from_dynamic_module, resolve_trust_remote_code
+from ...modeling_gguf_pytorch_utils import load_and_convert_gguf_config
 from ...utils import (
     CONFIG_NAME,
     cached_file,
@@ -461,6 +462,7 @@ class _BaseAutoModelClass:
         code_revision = kwargs.pop("code_revision", None)
         commit_hash = kwargs.pop("_commit_hash", None)
         adapter_kwargs = kwargs.pop("adapter_kwargs", None)
+        from_gguf = kwargs.get("from_gguf", None)
 
         token = hub_kwargs.pop("token", None)
         use_auth_token = hub_kwargs.pop("use_auth_token", None)
@@ -520,15 +522,20 @@ class _BaseAutoModelClass:
             if kwargs.get("quantization_config", None) is not None:
                 _ = kwargs.pop("quantization_config")
 
-            config, kwargs = AutoConfig.from_pretrained(
-                pretrained_model_name_or_path,
-                return_unused_kwargs=True,
-                trust_remote_code=trust_remote_code,
-                code_revision=code_revision,
-                _commit_hash=commit_hash,
-                **hub_kwargs,
-                **kwargs,
-            )
+            if from_gguf is None:
+                config, kwargs = AutoConfig.from_pretrained(
+                    pretrained_model_name_or_path,
+                    return_unused_kwargs=True,
+                    trust_remote_code=trust_remote_code,
+                    code_revision=code_revision,
+                    _commit_hash=commit_hash,
+                    **hub_kwargs,
+                    **kwargs,
+                )
+            else:
+                gguf_path = cached_file(pretrained_model_name_or_path, from_gguf, **hub_kwargs)
+
+                config = load_and_convert_gguf_config(gguf_path)
 
             # if torch_dtype=auto was passed here, ensure to pass it on
             if kwargs_orig.get("torch_dtype", None) == "auto":

@@ -2981,7 +2981,10 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
         adapter_kwargs = kwargs.pop("adapter_kwargs", {})
         adapter_name = kwargs.pop("adapter_name", "default")
         use_flash_attention_2 = kwargs.pop("use_flash_attention_2", False)
+
         from_gguf = kwargs.pop("from_gguf", None)
+        # Cache path to the GGUF file
+        gguf_path = None
 
         if is_fsdp_enabled():
             low_cpu_mem_usage = True
@@ -3467,6 +3470,30 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
                 logger.info(f"loading weights file {filename} from cache at {resolved_archive_file}")
         elif from_gguf is not None:
             from .modeling_gguf_pytorch_utils import load_and_convert_gguf_file
+
+            if gguf_path is None:
+                # Case 1: the GGUF file is present locally
+                if os.path.isfile(from_gguf):
+                    gguf_path = from_gguf
+                # Case 2: The GGUF path is a location on the Hub
+                # Load from URL or cache if already cached
+                else:
+                    cached_file_kwargs = {
+                        "cache_dir": cache_dir,
+                        "force_download": force_download,
+                        "proxies": proxies,
+                        "resume_download": resume_download,
+                        "local_files_only": local_files_only,
+                        "token": token,
+                        "user_agent": user_agent,
+                        "revision": revision,
+                        "subfolder": subfolder,
+                        "_raise_exceptions_for_gated_repo": False,
+                        "_raise_exceptions_for_missing_entries": False,
+                        "_commit_hash": commit_hash,
+                    }
+
+                gguf_path = cached_file(pretrained_model_name_or_path, from_gguf, **cached_file_kwargs)
 
             state_dict = load_and_convert_gguf_file(gguf_path, model_type=config.model_type)
 
