@@ -1,6 +1,6 @@
 # coding=utf-8
 # Copyright 2024 The ggml.ai team and The HuggingFace Inc. team. and pygguf author (github.com/99991)
-# https://github.com/99991/pygguf 
+# https://github.com/99991/pygguf
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,9 @@ with extra methods beings exposes
 """
 import struct
 import warnings
+
 import numpy as np
+
 
 # Listed here: https://github.com/ggerganov/ggml/blob/master/docs/gguf.md
 GGML_TYPES = {
@@ -32,10 +34,11 @@ GGML_TYPES = {
 
 # The Blocksizes are reported in bytes
 GGML_BLOCK_SIZES = {
-    "Q8_0": 2 + 32, # Q8_0 uses a blocksize of 32 (int8 tensors) + 2 bytes allocated for the scales
+    "Q8_0": 2 + 32,  # Q8_0 uses a blocksize of 32 (int8 tensors) + 2 bytes allocated for the scales
     "Q4_K": 144,
-    "Q4_0": 2 + 16, # Q4_0 uses a blocksize of 32 but the 4-bit tensors are packed into 8-bit tensors + 2 bytes for the scales
-    "Q6_K": 210
+    "Q4_0": 2
+    + 16,  # Q4_0 uses a blocksize of 32 but the 4-bit tensors are packed into 8-bit tensors + 2 bytes for the scales
+    "Q6_K": 210,
 }
 
 # Listed here: https://github.com/ggerganov/ggml/blob/master/docs/gguf.md
@@ -68,19 +71,20 @@ def read_value(f, data_type):
         return struct.unpack("<f", f.read(4))[0]
 
     elif data_type == DATA_TYPES["array"]:
-        data_type, count = struct.unpack("<IQ", f.read(4+8))
+        data_type, count = struct.unpack("<IQ", f.read(4 + 8))
         return [read_value(f, data_type) for _ in range(count)]
     elif data_type == DATA_TYPES["bool"]:
-       # This should correspond to `GGUF_METADATA_VALUE_TYPE_BOOL`
-       # 1-byte value where 0 is false and 1 is true.
-       return struct.unpack("<b", f.read(1))[0]
+        # This should correspond to `GGUF_METADATA_VALUE_TYPE_BOOL`
+        # 1-byte value where 0 is false and 1 is true.
+        return struct.unpack("<b", f.read(1))[0]
     else:
         raise NotImplementedError(f"Data type {data_type} not implemented")
+
 
 def load_gguf(f):
     f.seek(0)
     assert f.read(4) == b"GGUF"
-    values = struct.unpack("<IQQ", f.read(4+8+8))
+    values = struct.unpack("<IQQ", f.read(4 + 8 + 8))
     version, n_tensors, n_kv = values
     if version != 3:
         warnings.warn(f"Version {version} has never been tested, might not work")
@@ -126,6 +130,7 @@ def load_gguf(f):
 
     return info, tensorinfo
 
+
 def dequantize_q4_k(data):
     # C implementation
     # https://github.com/ggerganov/ggml/blob/fca1caafea7de9fbd7efc733b9818f9cf2da3050/src/ggml-quants.c#L1929
@@ -144,13 +149,18 @@ def dequantize_q4_k(data):
     qs2 = data_u8[:, 16:].reshape(num_blocks, 4, 32)
 
     # Dequantize scales and offsets (6 bits and 4 + 2 bits)
-    factors = scale_factors * np.concatenate([qs1[:, 0:4] & 0b111111, (qs1[:, 8:] & 15) | ((qs1[:, 0:4] >> 6) << 4)], axis=1)
-    offsets = scale_offsets * np.concatenate([qs1[:, 4:8] & 0b111111, (qs1[:, 8:] >> 4) | ((qs1[:, 4:8] >> 6) << 4)], axis=1)
+    factors = scale_factors * np.concatenate(
+        [qs1[:, 0:4] & 0b111111, (qs1[:, 8:] & 15) | ((qs1[:, 0:4] >> 6) << 4)], axis=1
+    )
+    offsets = scale_offsets * np.concatenate(
+        [qs1[:, 4:8] & 0b111111, (qs1[:, 8:] >> 4) | ((qs1[:, 4:8] >> 6) << 4)], axis=1
+    )
 
     # Interleave low and high quantized bits
-    qs2 = np.stack([qs2 & 0xf, qs2 >> 4], axis=2).reshape(num_blocks, 8, 32)
+    qs2 = np.stack([qs2 & 0xF, qs2 >> 4], axis=2).reshape(num_blocks, 8, 32)
     # Dequantize final weights using scales and offsets
     return factors * qs2 - offsets
+
 
 def dequantize_q4_0(data):
     # C implementation
@@ -169,13 +179,14 @@ def dequantize_q4_0(data):
     # the rest of the bytes corresponds to the quants - we discard the first two bytes
     quants = data_u8[:, 2:]
 
-    ql = (quants[:, :] & 0xf).astype(np.int8) - 8
+    ql = (quants[:, :] & 0xF).astype(np.int8) - 8
     qr = (quants[:, :] >> 4).astype(np.int8) - 8
 
-    # Use hstack 
+    # Use hstack
     quants = np.hstack([ql, qr])
 
     return (scales * quants).astype(np.float32)
+
 
 def dequantize_q6_k(data):
     # C implementation
@@ -197,34 +208,38 @@ def dequantize_q6_k(data):
     sc = data_i8[:, 192:208, np.newaxis].astype(np.float32)
 
     # Unpack bits, subtraction requires signed data type
-    q1 = (ql[:,   :32 ] & 0xF) | (((qh[:, :32] >> 0) & 3) << 4) - 32
-    q2 = (ql[:, 32:64 ] & 0xF) | (((qh[:, :32] >> 2) & 3) << 4) - 32
-    q3 = (ql[:,   :32 ] >>  4) | (((qh[:, :32] >> 4) & 3) << 4) - 32
-    q4 = (ql[:, 32:64 ] >>  4) | (((qh[:, :32] >> 6) & 3) << 4) - 32
-    q5 = (ql[:, 64:96 ] & 0xF) | (((qh[:, 32:] >> 0) & 3) << 4) - 32
+    q1 = (ql[:, :32] & 0xF) | (((qh[:, :32] >> 0) & 3) << 4) - 32
+    q2 = (ql[:, 32:64] & 0xF) | (((qh[:, :32] >> 2) & 3) << 4) - 32
+    q3 = (ql[:, :32] >> 4) | (((qh[:, :32] >> 4) & 3) << 4) - 32
+    q4 = (ql[:, 32:64] >> 4) | (((qh[:, :32] >> 6) & 3) << 4) - 32
+    q5 = (ql[:, 64:96] & 0xF) | (((qh[:, 32:] >> 0) & 3) << 4) - 32
     q6 = (ql[:, 96:128] & 0xF) | (((qh[:, 32:] >> 2) & 3) << 4) - 32
-    q7 = (ql[:, 64:96 ] >>  4) | (((qh[:, 32:] >> 4) & 3) << 4) - 32
-    q8 = (ql[:, 96:128] >>  4) | (((qh[:, 32:] >> 6) & 3) << 4) - 32
+    q7 = (ql[:, 64:96] >> 4) | (((qh[:, 32:] >> 4) & 3) << 4) - 32
+    q8 = (ql[:, 96:128] >> 4) | (((qh[:, 32:] >> 6) & 3) << 4) - 32
 
     # Dequantize
-    return scales * np.concatenate([
-        sc[:,  0] * q1[:, :16],
-        sc[:,  1] * q1[:, 16:],
-        sc[:,  2] * q2[:, :16],
-        sc[:,  3] * q2[:, 16:],
-        sc[:,  4] * q3[:, :16],
-        sc[:,  5] * q3[:, 16:],
-        sc[:,  6] * q4[:, :16],
-        sc[:,  7] * q4[:, 16:],
-        sc[:,  8] * q5[:, :16],
-        sc[:,  9] * q5[:, 16:],
-        sc[:, 10] * q6[:, :16],
-        sc[:, 11] * q6[:, 16:],
-        sc[:, 12] * q7[:, :16],
-        sc[:, 13] * q7[:, 16:],
-        sc[:, 14] * q8[:, :16],
-        sc[:, 15] * q8[:, 16:],
-    ], axis=1)
+    return scales * np.concatenate(
+        [
+            sc[:, 0] * q1[:, :16],
+            sc[:, 1] * q1[:, 16:],
+            sc[:, 2] * q2[:, :16],
+            sc[:, 3] * q2[:, 16:],
+            sc[:, 4] * q3[:, :16],
+            sc[:, 5] * q3[:, 16:],
+            sc[:, 6] * q4[:, :16],
+            sc[:, 7] * q4[:, 16:],
+            sc[:, 8] * q5[:, :16],
+            sc[:, 9] * q5[:, 16:],
+            sc[:, 10] * q6[:, :16],
+            sc[:, 11] * q6[:, 16:],
+            sc[:, 12] * q7[:, :16],
+            sc[:, 13] * q7[:, 16:],
+            sc[:, 14] * q8[:, :16],
+            sc[:, 15] * q8[:, 16:],
+        ],
+        axis=1,
+    )
+
 
 def dequantize_q8_0(data):
     # C struct definition
@@ -236,6 +251,7 @@ def dequantize_q8_0(data):
     qs = np.frombuffer(data, dtype=np.int8).reshape(num_blocks, 2 + 32)[:, 2:]
 
     return scales * qs
+
 
 def load_gguf_tensor(f, tensorinfo, name):
     t = tensorinfo[name]
@@ -273,6 +289,8 @@ def load_gguf_tensor(f, tensorinfo, name):
 
         values = dequantize_q6_k(data)
     else:
-        raise NotImplementedError(f"ggml_type {ggml_type} not implemented - please raise an issue on huggingface transformers: https://github.com/huggingface/transformers/issues/new/choose")
+        raise NotImplementedError(
+            f"ggml_type {ggml_type} not implemented - please raise an issue on huggingface transformers: https://github.com/huggingface/transformers/issues/new/choose"
+        )
 
     return values.reshape(shape[::-1])

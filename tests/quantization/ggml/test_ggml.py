@@ -12,15 +12,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import tempfile
 import unittest
 
-from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers.testing_utils import require_gguf, require_torch_gpu, slow, torch_device
 from transformers.utils import is_torch_available
-from transformers.testing_utils import require_gguf, require_torch_gpu, torch_device, slow
+
 
 if is_torch_available():
     import torch
+
 
 @require_gguf
 @require_torch_gpu
@@ -67,7 +68,9 @@ class GgufIntegrationTests(unittest.TestCase):
 
     def test_q6_k_fp16(self):
         tokenizer = AutoTokenizer.from_pretrained(self.model_id, from_gguf=self.q6_k_gguf_model_id)
-        model = AutoModelForCausalLM.from_pretrained(self.model_id, from_gguf=self.q6_k_gguf_model_id, torch_dtype=torch.float16).to(torch_device)
+        model = AutoModelForCausalLM.from_pretrained(
+            self.model_id, from_gguf=self.q6_k_gguf_model_id, torch_dtype=torch.float16
+        ).to(torch_device)
 
         self.assertTrue(model.lm_head.weight.dtype == torch.float16)
 
@@ -86,3 +89,7 @@ class GgufIntegrationTests(unittest.TestCase):
 
         EXPECTED_TEXT = "Hello, World!\n\n5. Use a library"
         self.assertEqual(tokenizer.decode(out[0], skip_special_tokens=True), EXPECTED_TEXT)
+
+    def test_raise_wrong_model_type(self):
+        with self.assertRaises(ValueError):
+            _ = AutoModelForCausalLM.from_pretrained("google/flan-t5-base", from_gguf=self.q8_0_gguf_model_id)

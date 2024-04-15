@@ -3486,7 +3486,7 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
                         f" {gguf_file_name} and thus cannot be loaded with `from_pretrained`."
                     )
 
-            state_dict = load_and_convert_gguf_file(gguf_path)
+            state_dict = load_and_convert_gguf_file(gguf_path, model_type=config.model_type)
 
             resolved_archive_file = None
             is_sharded = False

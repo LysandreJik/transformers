@@ -261,7 +261,7 @@ def load_gguf_checkpoint_in_pytorch_model(gguf_checkpoint_path, output_loading_i
     return parsed_parameters
 
 
-def load_and_convert_gguf_file(gguf_checkpoint_path):
+def load_and_convert_gguf_file(gguf_checkpoint_path, model_type=None):
     """
     Convert a GGUF file into a PyTorch compatible state dict. Dequantizes the checkpoint in case the GGUF contains quantized tensors.
     Note that not all the quantization schemes are supported.
@@ -269,6 +269,8 @@ def load_and_convert_gguf_file(gguf_checkpoint_path):
     Args:
         gguf_checkpoint_path (`str`):
             Path to the GGUF
+        model_type (`str`, *optional*):
+            Optional argument to check if the passed model_type is the same as the parsed one.
     """
     converted_state_dict = {}
 
@@ -279,6 +281,11 @@ def load_and_convert_gguf_file(gguf_checkpoint_path):
 
         if architecture not in GGUF_SUPPORTED_ARCHITECTURES:
             raise ValueError(f"Architecture {architecture} not supported")
+
+        if model_type is not None and model_type != architecture:
+            raise ValueError(
+                f"Incompatible model_type between the parsed GGUF file and transformers model. Got {model_type} for transformers and {architecture} for GGUF"
+            )
 
         tensor_key_mapping = renames["tensors"][architecture]
 
