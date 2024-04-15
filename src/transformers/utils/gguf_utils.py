@@ -68,6 +68,8 @@ def load_gguf(f):
     if version != 3:
         warnings.warn(f"Version {version} has never been tested, might not work")
 
+    # import pdb; pdb.set_trace()
+
     info = {}
     for _ in range(n_kv):
         name = read_value(f, DATA_TYPES["string"])
@@ -99,7 +101,9 @@ def load_gguf(f):
     for t in tensorinfo.values():
         offset = start + t["bad_offset"]
 
-        alignment = 64
+        # Whey 32? See: https://github.com/ggerganov/ggml/blob/master/docs/gguf.md#required
+        # TODO: infer that from the config?
+        alignment = 32
         offset += (alignment - offset % alignment) % alignment
 
         t["offset"] = offset
@@ -143,13 +147,17 @@ def dequantize_q4_0(data):
 
     # The scales are stored on the first 2 bytes and the rest corresponds to the quants
     scales = data_f16[:, 0].reshape(num_blocks, 1).astype(np.float32)
-    scales = np.nan_to_num(scales)
+    # scales = np.nan_to_num(scales)
     # the rest of the bytes corresponds to the quants - we discard the first two bytes
     quants = data_u8[:, 2:]
 
-    quants = np.stack([quants[:, :] & 0xf, quants[:, :] >> 4], axis=1).reshape(num_blocks, 32)
+    ql = (quants[:, :] & 0xf).astype(np.int8) - 8
+    qr = (quants[:, :] >> 4).astype(np.int8) - 8
 
-    return scales * quants
+    # Use hstack 
+    quants = np.hstack([ql, qr])
+
+    return (scales * quants).astype(np.float32)
 
 def dequantize_q6_k(data):
     # C implementation
@@ -218,6 +226,7 @@ def load_gguf_tensor(f, tensorinfo, name):
     f.seek(offset)
 
     print(ggml_type)
+    # import pdb; pdb.set_trace()
 
     if ggml_type == GGML_TYPES["F32"]:
         size = num_elements * 4
@@ -250,7 +259,4 @@ def load_gguf_tensor(f, tensorinfo, name):
     else:
         raise NotImplementedError(f"ggml_type {ggml_type} not implemented")
 
-    try:
-        return values.reshape(shape[::-1])
-    except:
-        import pdb; pdb.set_trace()
+    return values.reshape(shape[::-1])

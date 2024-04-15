@@ -284,6 +284,8 @@ def load_and_convert_gguf_file(gguf_checkpoint_path):
         info, tensorinfo = load_gguf(f)
         architecture = info["general.architecture"]
 
+        # import pdb; pdb.set_trace()
+
         if architecture not in GGUF_SUPPORTED_ARCHITECTURES:
             raise ValueError(
                 f"Architecture {architecture} not supported"
