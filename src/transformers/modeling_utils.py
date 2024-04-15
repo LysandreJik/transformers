@@ -2982,7 +2982,6 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
         adapter_name = kwargs.pop("adapter_name", "default")
         use_flash_attention_2 = kwargs.pop("use_flash_attention_2", False)
         from_gguf = kwargs.pop("from_gguf", None)
-        gguf_kwargs = kwargs.pop("gguf_kwargs", {})
 
         if is_fsdp_enabled():
             low_cpu_mem_usage = True
@@ -3119,21 +3118,55 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
         # Load config if we don't provide a configuration
         if not isinstance(config, PretrainedConfig):
             config_path = config if config is not None else pretrained_model_name_or_path
-            config, model_kwargs = cls.config_class.from_pretrained(
-                config_path,
-                cache_dir=cache_dir,
-                return_unused_kwargs=True,
-                force_download=force_download,
-                resume_download=resume_download,
-                proxies=proxies,
-                local_files_only=local_files_only,
-                token=token,
-                revision=revision,
-                subfolder=subfolder,
-                _from_auto=from_auto_class,
-                _from_pipeline=from_pipeline,
-                **kwargs,
-            )
+            if from_gguf is None:
+                config, model_kwargs = cls.config_class.from_pretrained(
+                    config_path,
+                    cache_dir=cache_dir,
+                    return_unused_kwargs=True,
+                    force_download=force_download,
+                    resume_download=resume_download,
+                    proxies=proxies,
+                    local_files_only=local_files_only,
+                    token=token,
+                    revision=revision,
+                    subfolder=subfolder,
+                    _from_auto=from_auto_class,
+                    _from_pipeline=from_pipeline,
+                    **kwargs,
+                )
+            else:
+                from .modeling_gguf_pytorch_utils import load_and_convert_gguf_config
+
+                if not is_gguf_available():
+                    raise ValueError(
+                        "You need to have `gguf` installed in order to convert GGUF weights. `pip install gguf`"
+                    )
+
+                # Case 1: the GGUF file is present locally
+                if os.path.isfile(from_gguf):
+                    gguf_path = from_gguf
+                # Case 2: The GGUF path is a location on the Hub
+                # Load from URL or cache if already cached
+                else:
+                    cached_file_kwargs = {
+                        "cache_dir": cache_dir,
+                        "force_download": force_download,
+                        "proxies": proxies,
+                        "resume_download": resume_download,
+                        "local_files_only": local_files_only,
+                        "token": token,
+                        "user_agent": user_agent,
+                        "revision": revision,
+                        "subfolder": subfolder,
+                        "_raise_exceptions_for_gated_repo": False,
+                        "_raise_exceptions_for_missing_entries": False,
+                        "_commit_hash": commit_hash,
+                    }
+
+                gguf_path = cached_file(pretrained_model_name_or_path, from_gguf, **cached_file_kwargs)
+
+                config = load_and_convert_gguf_config(gguf_path)
+                model_kwargs = kwargs
         else:
             # In case one passes a config to `from_pretrained` + "attn_implementation"
             # override the `_attn_implementation` attribute to `attn_implementation` of the kwargs
@@ -3433,58 +3466,7 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
             else:
                 logger.info(f"loading weights file {filename} from cache at {resolved_archive_file}")
         elif from_gguf is not None:
-            if not is_gguf_available():
-                raise ValueError(
-                    "You need to have `gguf` installed in order to convert GGUF weights. `pip install gguf`"
-                )
-
             from .modeling_gguf_pytorch_utils import load_and_convert_gguf_file
-
-            # Case 1: the GGUF file is present locally
-            if os.path.isfile(from_gguf):
-                gguf_path = from_gguf
-            # Case 2: The GGUF path is a location on the Hub
-            # Load from URL or cache if already cached
-            else:
-                if len(from_gguf.split("/")) < 2:
-                    raise ValueError(
-                        "You passed an invalid location to a GGUF file on the Hub. Make sure to pass a valid full path, e.g. `TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/tinyllama-1.1b-chat-v1.0.Q4_0.gguf`"
-                    )
-
-                gguf_force_download = gguf_kwargs.pop("force_download", False)
-                gguf_resume_download = gguf_kwargs.pop("resume_download", False)
-                gguf_local_files_only = gguf_kwargs.pop("local_files_only", False)
-
-                gguf_subfolder = gguf_kwargs.pop("subfolder", None)
-                gguf_commit_hash = gguf_kwargs.pop("_commit_hash", None)
-
-                gguf_token = gguf_kwargs.get("token", None)
-                gguf_revision = gguf_kwargs.get("revision", None)
-
-                gguf_repo_name, gguf_file_name = "/".join(from_gguf.split("/")[:2]), "/".join(from_gguf.split("/")[2:])
-
-                cached_file_kwargs = {
-                    "cache_dir": cache_dir,
-                    "force_download": gguf_force_download,
-                    "resume_download": gguf_resume_download,
-                    "local_files_only": gguf_local_files_only,
-                    "token": gguf_token,
-                    "revision": gguf_revision,
-                    "subfolder": gguf_subfolder,
-                    "_raise_exceptions_for_gated_repo": False,
-                    "_raise_exceptions_for_missing_entries": False,
-                    "_commit_hash": gguf_commit_hash,
-                }
-
-                gguf_path = cached_file(gguf_repo_name, gguf_file_name, **cached_file_kwargs)
-
-                # Since we set _raise_exceptions_for_missing_entries=False, we don't get an exception but a None
-                # result when internet is up, the repo and revision exist, but the file does not.
-                if gguf_path is None:
-                    raise EnvironmentError(
-                        f"{gguf_repo_name} does not appear to have a file named"
-                        f" {gguf_file_name} and thus cannot be loaded with `from_pretrained`."
-                    )
 
             state_dict = load_and_convert_gguf_file(gguf_path, model_type=config.model_type)
 

@@ -21,6 +21,7 @@ import torch
 from tqdm import tqdm
 
 from .integrations import load_gguf, load_gguf_tensor
+from .models.auto import AutoConfig
 from .utils.logging import get_logger
 
 
@@ -63,7 +64,7 @@ renames = {
             "rope.dimension_count": None,
             "rope.freq_base": "rope_theta",
             "attention.head_count": "num_attention_heads",
-            "attention.head_count_kv": None,
+            "attention.head_count_kv": "num_key_value_heads",
             "attention.layer_norm_rms_epsilon": "rms_norm_eps",
             "vocab_size": "vocab_size",
         },
@@ -259,6 +260,35 @@ def load_gguf_checkpoint_in_pytorch_model(gguf_checkpoint_path, output_loading_i
 
     print(f"Remaining keys: {reader_keys}")
     return parsed_parameters
+
+
+def load_and_convert_gguf_config(gguf_checkpoint_path, model_type=None):
+    config_dict = {}
+
+    with open(gguf_checkpoint_path, "rb") as f:
+        # Load metadata
+        info, tensorinfo = load_gguf(f)
+        architecture = info["general.architecture"]
+
+        config_mapping = renames["config"][architecture]
+
+        if architecture not in GGUF_SUPPORTED_ARCHITECTURES:
+            raise ValueError(f"Architecture {architecture} not supported")
+
+        if model_type is not None and model_type != architecture:
+            raise ValueError(
+                f"Incompatible model_type between the parsed GGUF file and transformers model. Got {model_type} for transformers and {architecture} for GGUF"
+            )
+
+        for key, value in info.items():
+            if key.startswith(architecture):
+                renamed_key = config_mapping[key.replace(f"{architecture}.", "")]
+                if renamed_key is not None:
+                    config_dict[renamed_key] = value
+
+    # mport pdb; pdb.set_trace()
+
+    return AutoConfig.for_model(architecture, **config_dict)
 
 
 def load_and_convert_gguf_file(gguf_checkpoint_path, model_type=None):
