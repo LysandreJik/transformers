@@ -1996,42 +1996,45 @@ class PreTrainedTokenizerBase(SpecialTokensMixin, PushToHubMixin):
             vocab_files[file_id] = pretrained_model_name_or_path
             single_file_id = file_id
         else:
-            # At this point pretrained_model_name_or_path is either a directory or a model identifier name
-            additional_files_names = {
-                "added_tokens_file": ADDED_TOKENS_FILE,  # kept only for legacy
-                "special_tokens_map_file": SPECIAL_TOKENS_MAP_FILE,  # kept only for legacy
-                "tokenizer_config_file": TOKENIZER_CONFIG_FILE,
-                # tokenizer_file used to initialize a slow from a fast. Properly copy the `addedTokens` instead of adding in random orders
-                "tokenizer_file": FULL_TOKENIZER_FILE,
-            }
-            vocab_files = {**cls.vocab_files_names, **additional_files_names}
-            if "tokenizer_file" in vocab_files:
-                # Try to get the tokenizer config to see if there are versioned tokenizer files.
-                fast_tokenizer_file = FULL_TOKENIZER_FILE
-                resolved_config_file = cached_file(
-                    pretrained_model_name_or_path,
-                    TOKENIZER_CONFIG_FILE,
-                    cache_dir=cache_dir,
-                    force_download=force_download,
-                    resume_download=resume_download,
-                    proxies=proxies,
-                    token=token,
-                    revision=revision,
-                    local_files_only=local_files_only,
-                    subfolder=subfolder,
-                    user_agent=user_agent,
-                    _raise_exceptions_for_gated_repo=False,
-                    _raise_exceptions_for_missing_entries=False,
-                    _raise_exceptions_for_connection_errors=False,
-                    _commit_hash=commit_hash,
-                )
-                commit_hash = extract_commit_hash(resolved_config_file, commit_hash)
-                if resolved_config_file is not None:
-                    with open(resolved_config_file, encoding="utf-8") as reader:
-                        tokenizer_config = json.load(reader)
-                        if "fast_tokenizer_files" in tokenizer_config:
-                            fast_tokenizer_file = get_fast_tokenizer_file(tokenizer_config["fast_tokenizer_files"])
-                vocab_files["tokenizer_file"] = fast_tokenizer_file
+            if not from_gguf:
+                # At this point pretrained_model_name_or_path is either a directory or a model identifier name
+                additional_files_names = {
+                    "added_tokens_file": ADDED_TOKENS_FILE,  # kept only for legacy
+                    "special_tokens_map_file": SPECIAL_TOKENS_MAP_FILE,  # kept only for legacy
+                    "tokenizer_config_file": TOKENIZER_CONFIG_FILE,
+                    # tokenizer_file used to initialize a slow from a fast. Properly copy the `addedTokens` instead of adding in random orders
+                    "tokenizer_file": FULL_TOKENIZER_FILE,
+                }
+                vocab_files = {**cls.vocab_files_names, **additional_files_names}
+                if "tokenizer_file" in vocab_files:
+                    # Try to get the tokenizer config to see if there are versioned tokenizer files.
+                    fast_tokenizer_file = FULL_TOKENIZER_FILE
+                    resolved_config_file = cached_file(
+                        pretrained_model_name_or_path,
+                        TOKENIZER_CONFIG_FILE,
+                        cache_dir=cache_dir,
+                        force_download=force_download,
+                        resume_download=resume_download,
+                        proxies=proxies,
+                        token=token,
+                        revision=revision,
+                        local_files_only=local_files_only,
+                        subfolder=subfolder,
+                        user_agent=user_agent,
+                        _raise_exceptions_for_gated_repo=False,
+                        _raise_exceptions_for_missing_entries=False,
+                        _raise_exceptions_for_connection_errors=False,
+                        _commit_hash=commit_hash,
+                    )
+                    commit_hash = extract_commit_hash(resolved_config_file, commit_hash)
+                    if resolved_config_file is not None:
+                        with open(resolved_config_file, encoding="utf-8") as reader:
+                            tokenizer_config = json.load(reader)
+                            if "fast_tokenizer_files" in tokenizer_config:
+                                fast_tokenizer_file = get_fast_tokenizer_file(tokenizer_config["fast_tokenizer_files"])
+                    vocab_files["tokenizer_file"] = fast_tokenizer_file
+            else:
+                vocab_files["vocab_file"] = from_gguf
 
         # Get files from url, cache, or disk depending on the case
         resolved_vocab_files = {}
@@ -2070,7 +2073,7 @@ class PreTrainedTokenizerBase(SpecialTokensMixin, PushToHubMixin):
                 "files are necessary for the tokenizer to operate."
             )
 
-        if all(full_file_name is None for full_file_name in resolved_vocab_files.values()):
+        if all(full_file_name is None for full_file_name in resolved_vocab_files.values()) and not from_gguf:
             raise EnvironmentError(
                 f"Can't load tokenizer for '{pretrained_model_name_or_path}'. If you were trying to load it from "
                 "'https://huggingface.co/models', make sure you don't have a local directory with the same name. "

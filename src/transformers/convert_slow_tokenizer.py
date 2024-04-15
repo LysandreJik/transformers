@@ -1410,6 +1410,7 @@ class GGUFLlamaConverter(LlamaConverter):
     def __init__(self, filename):
         # requires_backends(self, "gguf")
         # super().__init__()
+
         self.proto = GGUFTokenizer(load_gguf_checkpoint_in_pytorch_model(filename)["tokenizer"])
         self.original_tokenizer = self.proto
 
