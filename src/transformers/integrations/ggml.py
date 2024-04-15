@@ -15,10 +15,9 @@
 # limitations under the License.
 """
 Integration with GGML / The file is copied and adapted from https://github.com/99991/pygguf
-with extra methods beings exposes
+with extra methods beings exposed
 """
 import struct
-import warnings
 
 import numpy as np
 
@@ -83,13 +82,13 @@ def read_value(f, data_type):
 
 def load_gguf(f):
     f.seek(0)
-    assert f.read(4) == b"GGUF"
+    if f.read(4) != b"GGUF":
+        raise ValueError("GGUF sanity check failed ! Please make sure to have passed a valid GGUF file path.")
+
     values = struct.unpack("<IQQ", f.read(4 + 8 + 8))
     version, n_tensors, n_kv = values
     if version != 3:
-        warnings.warn(f"Version {version} has never been tested, might not work")
-
-    # import pdb; pdb.set_trace()
+        raise ValueError(f"GGUF loading only works for GGUF version 3 - Got: {version} ")
 
     info = {}
     for _ in range(n_kv):
